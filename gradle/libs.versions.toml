@@ -1,0 +1,23 @@
+[versions]
+quarkus = "3.23.0"
+drools = "8.44.2.Final"
+jooq = "3.19.18"
+
+[libraries]
+quarkus-bom = { module = "io.quarkus.platform:quarkus-bom", version.ref = "quarkus" }
+quarkus-arc = { module = "io.quarkus:quarkus-arc" }
+quarkus-rest = { module = "io.quarkus:quarkus-rest" }
+quarkus-rest-jackson = { module = "io.quarkus:quarkus-rest-jackson" }
+quarkus-jdbc-postgresql = { module = "io.quarkus:quarkus-jdbc-postgresql" }
+quarkus-flyway = { module = "io.quarkus:quarkus-flyway" }
+quarkus-smallrye-health = { module = "io.quarkus:quarkus-smallrye-health" }
+quarkus-logging-json = { module = "io.quarkus:quarkus-logging-json" }
+flyway-postgresql = { module = "org.flywaydb:flyway-database-postgresql" }
+jooq = { module = "org.jooq:jooq", version.ref = "jooq" }
+drools-engine = { module = "org.drools:drools-engine", version.ref = "drools" }
+drools-mvel = { module = "org.drools:drools-mvel", version.ref = "drools" }
+quarkus-junit5 = { module = "io.quarkus:quarkus-junit5" }
+rest-assured = { module = "io.rest-assured:rest-assured" }
+
+[plugins]
+quarkus = { id = "io.quarkus", version.ref = "quarkus" }
