@@ -42,34 +42,7 @@ docker compose up -d
 
 ## Architecture
 
-### High-Level Structure
-
-Java 21 + Quarkus 3.x REST backend with a Drools 8.x rule engine. Single-instance stateful service backed by PostgreSQL 16. Uses jOOQ for type-safe SQL (no ORM), Flyway for migrations, and Jackson for REST serialization.
-
-### Key Directories
-
-- `src/main/java/com/sky/synome/` — Main application code
-  - `config/` — CDI producers and typed config (`JooqProducer`, `EngineConfig`)
-  - `core/` — Engine session lifecycle, changeset processing, rule compilation, hot swap
-  - `changeset/` — Changeset model, log, replayer, validator
-  - `checkpoint/` — Serialization (MessagePack + LZ4), PostgreSQL persistence, recovery
-  - `provenance/` — Derivation tracking, explanation, async persistence
-  - `api/` — REST resources and DTOs
-- `src/main/resources/db/migration/` — Flyway SQL migrations (V001–V005)
-- `src/main/resources/rules/` — DRL rule files
-- `src/main/resources/application.properties` — Quarkus config (dev/prod profiles)
-- `gradle/libs.versions.toml` — Version catalog for all dependencies
-
-### Important Patterns
-
-- **Changesets are the only write path.** No direct fact manipulation in working memory.
-- **Three-way fact distinction:** base facts (persistent, checkpointed), events (temporal, auto-expiring via `@expires`, NOT checkpointed), derived facts (TMS-managed via `insertLogical()`, re-derived on restore).
-- **Rules must use `insertLogical()` exclusively.** `insert()` in rule RHS is a bug.
-- **Single writer:** one changeset at a time, enforced by `SessionLock`.
-- **Checkpoint + replay = identical state.** Deterministic recovery via pseudo clock.
-- **Provenance is non-blocking.** Async batched persistence to PostgreSQL.
-- **Database migrations:** Flyway, auto-runs at startup. Tables: `changeset_log`, `checkpoints`, `fact_provenance`, `fact_modifications`, `rule_versions`, `api_keys`.
-- **API auth:** API key via `X-Api-Key` header, permission-based access control.
+See [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) for full technical architecture and [docs/PLANS.md](docs/PLANS.md) for implementation phases.
 
 ## Configuration
 
