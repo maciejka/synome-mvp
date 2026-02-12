@@ -1,0 +1,34 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<FindBugsFilter>
+  <!-- Exclude jOOQ generated code -->
+  <Match>
+    <Package name="~com\.sky\.synome\.jooq\.generated.*"/>
+  </Match>
+
+  <!-- Exclude Quarkus-generated classes -->
+  <Match>
+    <Class name="~.*_Bean"/>
+  </Match>
+  <Match>
+    <Class name="~.*_ClientProxy"/>
+  </Match>
+  <Match>
+    <Class name="~.*_Subclass"/>
+  </Match>
+
+  <!-- DTO public fields: set by Jackson, not by Java code -->
+  <Match>
+    <Package name="com.sky.synome.api.dto"/>
+    <Bug pattern="UWF_UNWRITTEN_PUBLIC_OR_PROTECTED_FIELD,URF_UNREAD_PUBLIC_OR_PROTECTED_FIELD"/>
+  </Match>
+
+  <!-- Records and DTOs: EI_EXPOSE_REP / EI_EXPOSE_REP2 are false positives -->
+  <Match>
+    <Bug pattern="EI_EXPOSE_REP,EI_EXPOSE_REP2"/>
+  </Match>
+
+  <!-- Non-final exception class used as inner class -->
+  <Match>
+    <Bug pattern="CT_CONSTRUCTOR_THROW"/>
+  </Match>
+</FindBugsFilter>

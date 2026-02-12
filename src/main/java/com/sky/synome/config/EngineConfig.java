@@ -7,15 +7,15 @@ import io.smallrye.config.WithName;
 @ConfigMapping(prefix = "engine")
 public interface EngineConfig {
 
-    @WithName("rules-path")
-    @WithDefault("rules")
-    String rulesPath();
+  @WithName("rules-path")
+  @WithDefault("rules")
+  String rulesPath();
 
-    @WithName("default-rules-file")
-    @WithDefault("bootstrap-rules.drl")
-    String defaultRulesFile();
+  @WithName("default-rules-file")
+  @WithDefault("bootstrap-rules.drl")
+  String defaultRulesFile();
 
-    @WithName("lock-timeout-ms")
-    @WithDefault("5000")
-    long lockTimeoutMs();
+  @WithName("lock-timeout-ms")
+  @WithDefault("5000")
+  long lockTimeoutMs();
 }

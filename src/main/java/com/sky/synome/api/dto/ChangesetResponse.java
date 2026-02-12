@@ -5,11 +5,11 @@ import java.util.UUID;
 
 public class ChangesetResponse {
 
-    public UUID changesetId;
-    public long sequenceNum;
-    public String status;
-    public int rulesFired;
-    public long durationMs;
-    public EffectsSummary effects;
-    public List<DerivedFactSummary> newDerivedFacts;
+  public UUID changesetId;
+  public long sequenceNum;
+  public String status;
+  public int rulesFired;
+  public long durationMs;
+  public EffectsSummary effects;
+  public List<DerivedFactSummary> newDerivedFacts;
 }

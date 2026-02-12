@@ -2,6 +2,8 @@
 quarkus = "3.23.0"
 drools = "8.44.2.Final"
 jooq = "3.19.18"
+spotless = "7.0.2"
+spotbugs-plugin = "6.1.7"
 
 [libraries]
 quarkus-bom = { module = "io.quarkus.platform:quarkus-bom", version.ref = "quarkus" }
@@ -21,3 +23,5 @@ rest-assured = { module = "io.rest-assured:rest-assured" }
 
 [plugins]
 quarkus = { id = "io.quarkus", version.ref = "quarkus" }
+spotless = { id = "com.diffplug.spotless", version.ref = "spotless" }
+spotbugs = { id = "com.github.spotbugs", version.ref = "spotbugs-plugin" }
