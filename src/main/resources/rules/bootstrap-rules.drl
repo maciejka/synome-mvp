@@ -1,0 +1,35 @@
+package com.sky.synome.rules;
+
+declare Customer
+    customerId : String
+    name       : String
+    tier       : String
+    balance    : double
+end
+
+declare Account
+    accountId  : String
+    customerId : String
+    type       : String
+    balance    : double
+end
+
+declare HighValueCustomer
+    customerId : String
+    customerName : String
+    totalBalance : double
+    reason     : String
+end
+
+rule "Premium customer with high-value account"
+    when
+        $c : Customer( tier == "PREMIUM" )
+        $a : Account( customerId == $c.customerId, balance > 100000 )
+    then
+        HighValueCustomer hvn = new HighValueCustomer();
+        hvn.setCustomerId($c.getCustomerId());
+        hvn.setCustomerName($c.getName());
+        hvn.setTotalBalance($a.getBalance());
+        hvn.setReason("Premium customer with account balance > 100K");
+        insertLogical(hvn);
+end
