@@ -7,7 +7,6 @@ This document defines the target end-state architecture.
 - It describes what the system must look like when all planned phases are complete.
 - It does not claim everything here is implemented today.
 - Current implementation status is tracked in `docs/PLANS.md`.
-- Remediation for review findings is tracked in `docs/REMEDIATION_PLAN.md`.
 
 ## 1. Goals and Constraints
 
@@ -33,7 +32,7 @@ This document defines the target end-state architecture.
 
 - One engine instance hosts one logical `KieSession` (single tenant for MVP).
 - APIs fan in to changeset processor, query layer, provenance API, and operations API.
-- Engine writes append-only changeset log and periodic checkpoints.
+- Engine writes an ordered changeset log using reservation/finalization (with cancellation on failure) and periodic checkpoints.
 - Provenance persistence is asynchronous and never blocks rule execution.
 
 ### Component boundaries
@@ -133,8 +132,12 @@ Implication: network retries are safe and side effects execute at most once.
 A changeset is all-or-nothing.
 
 - Validation runs before mutation.
-- Session mutation and log persistence are coordinated so partial apply cannot be acknowledged.
-- On failure, caller gets explicit error and engine state reflects no partially committed changeset.
+- Reserve a `changeset_log` row before applying (`changeset_id`, payload, checksum).
+- Snapshot current base-fact state from the fact registry/session.
+- Apply entries and fire rules.
+- Finalize the reserved row with success metadata and replay payload.
+- If apply or finalization fails: rebuild session from the pre-apply snapshot, cancel the reserved row, and rethrow the original failure.
+- Success is acknowledged only after row finalization; failures return explicit error with no partially committed engine state.
 
 ## 5. Session and Concurrency Model
 
@@ -147,7 +150,7 @@ A changeset is all-or-nothing.
 
 ### PostgreSQL tables
 
-- `changeset_log`: ordered source of truth for applied changesets.
+- `changeset_log`: ordered source of truth for finalized (applied) changesets, with reservation records for in-flight/failed attempts.
 - `checkpoints`: serialized base-fact snapshots and engine metadata.
 - `fact_provenance`, `fact_modifications`: provenance records and history.
 - `rule_versions`: uploaded and active/inactive DRL versions.
@@ -156,9 +159,12 @@ A changeset is all-or-nothing.
 ### Changeset log requirements
 
 - Unique `changeset_id`.
+- Support reservation -> finalization/cancellation state transitions.
 - Persist request payload checksum.
+- Persist reservation data before in-memory apply begins.
 - Persist response payload required for strict idempotent replay.
 - Persist timing and rule-fire metadata.
+- Replay reads only finalized rows; canceled reservations are excluded from replay.
 
 ## 7. Recovery and Checkpointing
 
@@ -267,14 +273,14 @@ Error codes are stable API contract.
 - Lifecycle tests: checkpoint, crash recovery, replay determinism.
 - CEP tests: expiration/window behavior and replay window edges.
 - Hot swap tests: compatibility failures, success path, rollback path.
-- Contract tests: duplicate retry semantics and error schema.
+- Contract tests: duplicate retry semantics, reservation/finalization failure behavior, and error schema.
 
 ## 14. Key Invariants
 
 1. Changesets are the only write path.
 2. Rule RHS uses `insertLogical()` for derived facts.
 3. `changeset_id` provides strict idempotency.
-4. Changeset apply is atomic.
+4. Changeset apply is atomic via reservation/finalization plus compensating rollback.
 5. Checkpoint + replay is deterministic.
 6. Events are replayed, not checkpointed.
 7. Hot swap preserves base facts and re-derives conclusions.
