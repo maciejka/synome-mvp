@@ -21,6 +21,13 @@ declare HighValueCustomer
     reason     : String
 end
 
+declare Transaction
+    @role( event )
+    txId       : String
+    customerId : String
+    amount     : double
+end
+
 rule "Premium customer with high-value account"
     when
         $c : Customer( tier == "PREMIUM" )
@@ -32,4 +39,11 @@ rule "Premium customer with high-value account"
         hvn.setTotalBalance($a.getBalance());
         hvn.setReason("Premium customer with account balance > 100K");
         insertLogical(hvn);
+end
+
+rule "Observe transaction events"
+    when
+        $tx : Transaction() from entry-point "transactions"
+    then
+        // Keep transaction entry point active for EVENT/EMIT contract.
 end

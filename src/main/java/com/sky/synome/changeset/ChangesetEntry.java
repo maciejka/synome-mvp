@@ -1,5 +1,7 @@
 package com.sky.synome.changeset;
 
+import com.fasterxml.jackson.annotation.JsonFormat;
+import java.time.Instant;
 import java.util.Map;
 
 public record ChangesetEntry(
@@ -9,4 +11,4 @@ public record ChangesetEntry(
     String factType,
     Map<String, Object> data,
     String entryPoint,
-    Long timestamp) {}
+    @JsonFormat(shape = JsonFormat.Shape.STRING) Instant timestamp) {}

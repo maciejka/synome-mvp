@@ -8,14 +8,18 @@ import com.sky.synome.core.EngineSession;
 import com.sky.synome.core.FactRegistry;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
+import java.time.Instant;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
+import java.util.concurrent.TimeUnit;
 import org.jboss.logging.Logger;
 import org.kie.api.definition.type.FactType;
 import org.kie.api.runtime.KieSession;
+import org.kie.api.runtime.rule.EntryPoint;
 import org.kie.api.runtime.rule.FactHandle;
+import org.kie.api.time.SessionPseudoClock;
 
 @ApplicationScoped
 public class ChangesetProcessor {
@@ -177,10 +181,20 @@ public class ChangesetProcessor {
 
   private void applyEntry(
       ChangesetEntry entry, KieSession session, FactRegistry registry, EffectsSummary effects) {
-    switch (entry.action()) {
-      case UPSERT -> applyUpsert(entry, session, registry, effects);
-      case DELETE -> applyDelete(entry, session, registry, effects);
-      case EMIT -> applyEmit(entry, session, effects);
+    switch (entry.kind()) {
+      case FACT -> {
+        switch (entry.action()) {
+          case UPSERT -> applyUpsert(entry, session, registry, effects);
+          case DELETE -> applyDelete(entry, session, registry, effects);
+          default -> throw new IllegalStateException("Unsupported FACT action: " + entry.action());
+        }
+      }
+      case EVENT -> {
+        if (entry.action() != ChangesetAction.EMIT) {
+          throw new IllegalStateException("Unsupported EVENT action: " + entry.action());
+        }
+        applyEmit(entry, session, effects);
+      }
     }
   }
 
@@ -220,8 +234,25 @@ public class ChangesetProcessor {
   private void applyEmit(ChangesetEntry entry, KieSession session, EffectsSummary effects) {
     FactType factType = engineSession.kieBase().getFactType(DRL_PACKAGE, entry.factType());
     Object event = createFact(factType, entry.data());
-    session.insert(event);
+
+    advanceClockForEvent(session, entry.timestamp());
+    EntryPoint entryPoint = session.getEntryPoint(entry.entryPoint());
+    if (entryPoint == null) {
+      throw new IllegalStateException("Unknown entryPoint: " + entry.entryPoint());
+    }
+    entryPoint.insert(event);
     effects.eventsEmitted++;
+  }
+
+  private void advanceClockForEvent(KieSession session, Instant eventTimestamp) {
+    if (!(session.getSessionClock() instanceof SessionPseudoClock clock)) {
+      throw new IllegalStateException("KieSession is not configured with a pseudo clock");
+    }
+    long eventMillis = eventTimestamp.toEpochMilli();
+    long currentMillis = clock.getCurrentTime();
+    if (eventMillis > currentMillis) {
+      clock.advanceTime(eventMillis - currentMillis, TimeUnit.MILLISECONDS);
+    }
   }
 
   private Object createFact(FactType factType, Map<String, Object> data) {

@@ -13,6 +13,7 @@ import com.sky.synome.api.dto.ChangesetResponse;
 import com.sky.synome.core.EngineSession;
 import io.quarkus.test.junit.QuarkusTest;
 import jakarta.inject.Inject;
+import java.time.Instant;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
@@ -21,6 +22,7 @@ import org.junit.jupiter.api.MethodOrderer;
 import org.junit.jupiter.api.Order;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.TestMethodOrder;
+import org.kie.api.time.SessionPseudoClock;
 
 @QuarkusTest
 @TestMethodOrder(MethodOrderer.OrderAnnotation.class)
@@ -356,6 +358,36 @@ class ChangesetProcessorTest {
     assertThrows(RuntimeException.class, () -> processor.process(changeset));
     assertFalse(engineSession.factRegistry().contains(factKey));
     assertEquals(0, countLogRows(changesetId));
+  }
+
+  @Test
+  @Order(10)
+  void eventEmitUsesEntryPointAndAdvancesClock() {
+    long beforeMillis =
+        ((SessionPseudoClock) engineSession.kieSession().getSessionClock()).getCurrentTime();
+    Instant eventTimestamp = Instant.ofEpochMilli(beforeMillis + 60_000L);
+
+    Changeset changeset =
+        new Changeset(
+            UUID.randomUUID(),
+            List.of(
+                new ChangesetEntry(
+                    EntryKind.EVENT,
+                    ChangesetAction.EMIT,
+                    null,
+                    "Transaction",
+                    Map.of("txId", "TX-900", "customerId", "C-900", "amount", 777.0),
+                    "transactions",
+                    eventTimestamp)),
+            Map.of());
+
+    ChangesetResponse response = processor.process(changeset);
+    long afterMillis =
+        ((SessionPseudoClock) engineSession.kieSession().getSessionClock()).getCurrentTime();
+
+    assertEquals(1, response.effects.eventsEmitted);
+    assertTrue(response.rulesFired >= 1);
+    assertEquals(eventTimestamp.toEpochMilli(), afterMillis);
   }
 
   private int countLogRows(UUID changesetId) {
