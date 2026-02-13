@@ -1,6 +1,6 @@
-# CLAUDE.md
+# AGENTS.md
 
-This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
+This file provides guidance to software agents when working with code in this repository.
 
 ## Project Overview
 
@@ -80,7 +80,7 @@ Recommended local QA pass:
 ./gradlew spotlessCheck checkstyleMain checkstyleTest spotbugsMain spotbugsTest test
 ```
 
-Commit gate policy:
+## Commit gate policy:
 
 - Run the aggregate QA task manually before every commit:
   - `./gradlew qa`
