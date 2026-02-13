@@ -85,6 +85,8 @@ Commit gate policy:
 - Run the aggregate QA task manually before every commit:
   - `./gradlew qa`
 - Do not create commits when `./gradlew qa` fails.
+- For every commit created by Codex, add this trailer to the commit message:
+  - `Co-Authored-By: Codex <noreply@openai.com>`
 
 ## Architecture
 
