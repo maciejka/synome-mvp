@@ -135,8 +135,7 @@ public class ChangesetProcessor {
 
     LOG.infof(
         "Changeset %s replayed from changeset_log with sequence=%d",
-        changeset.id(),
-        lookup.responsePayload().sequenceNum);
+        changeset.id(), lookup.responsePayload().sequenceNum);
     return lookup.responsePayload();
   }
 

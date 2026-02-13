@@ -37,7 +37,9 @@ class ChangesetProcessorLockTimeoutConfigTest {
               }
               try {
                 lockAcquired.countDown();
-                releaseLock.await(5, TimeUnit.SECONDS);
+                if (!releaseLock.await(5, TimeUnit.SECONDS)) {
+                  throw new IllegalStateException("Timed out waiting to release lock");
+                }
               } catch (InterruptedException e) {
                 Thread.currentThread().interrupt();
               } finally {

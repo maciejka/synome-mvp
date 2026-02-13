@@ -32,14 +32,7 @@ class ChangesetValidatorTest {
                     "customer:C-700",
                     "Customer",
                     Map.of(
-                        "customerId",
-                        "C-700",
-                        "name",
-                        "Gina",
-                        "tier",
-                        "STANDARD",
-                        "balance",
-                        300),
+                        "customerId", "C-700", "name", "Gina", "tier", "STANDARD", "balance", 300),
                     null,
                     null)),
             Map.of());

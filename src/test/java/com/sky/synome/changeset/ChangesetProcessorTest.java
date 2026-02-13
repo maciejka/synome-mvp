@@ -1,13 +1,13 @@
 package com.sky.synome.changeset;
 
+import static org.jooq.impl.DSL.field;
+import static org.jooq.impl.DSL.table;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertSame;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
-import static org.jooq.impl.DSL.field;
-import static org.jooq.impl.DSL.table;
 
 import com.sky.synome.api.dto.ChangesetResponse;
 import com.sky.synome.core.EngineSession;
@@ -247,14 +247,7 @@ class ChangesetProcessorTest {
                     factKey,
                     "Customer",
                     Map.of(
-                        "customerId",
-                        "C-301",
-                        "name",
-                        "Dora",
-                        "tier",
-                        "STANDARD",
-                        "balance",
-                        900),
+                        "customerId", "C-301", "name", "Dora", "tier", "STANDARD", "balance", 900),
                     null,
                     null)),
             Map.of());
@@ -311,14 +304,7 @@ class ChangesetProcessorTest {
                     factKey,
                     "Customer",
                     Map.of(
-                        "customerId",
-                        "C-500",
-                        "name",
-                        "Evan",
-                        "tier",
-                        "STANDARD",
-                        "balance",
-                        2100),
+                        "customerId", "C-500", "name", "Evan", "tier", "STANDARD", "balance", 2100),
                     null,
                     null)),
             Map.of());

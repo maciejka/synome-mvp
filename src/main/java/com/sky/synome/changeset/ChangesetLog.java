@@ -34,8 +34,7 @@ public class ChangesetLog {
   private static final Field<Long> ENGINE_CLOCK_AT_FIELD = field("engine_clock_at", Long.class);
   private static final Field<Integer> RULES_FIRED_FIELD = field("rules_fired", Integer.class);
   private static final Field<Integer> DURATION_MS_FIELD = field("duration_ms", Integer.class);
-  private static final Field<JSONB> RESPONSE_PAYLOAD_FIELD =
-      field("response_payload", JSONB.class);
+  private static final Field<JSONB> RESPONSE_PAYLOAD_FIELD = field("response_payload", JSONB.class);
   private static final Field<String> ERROR_FIELD = field("error", String.class);
 
   @Inject DSLContext dsl;
@@ -160,8 +159,7 @@ public class ChangesetLog {
     return Optional.of(deserializeResponse(responsePayload));
   }
 
-  private ChangesetResponse copyResponseWithSequence(
-      ChangesetResponse response, long sequenceNum) {
+  private ChangesetResponse copyResponseWithSequence(ChangesetResponse response, long sequenceNum) {
     ChangesetResponse copy = new ChangesetResponse();
     copy.changesetId = response.changesetId;
     copy.sequenceNum = sequenceNum;

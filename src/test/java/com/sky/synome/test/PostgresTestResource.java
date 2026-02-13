@@ -29,12 +29,18 @@ public class PostgresTestResource implements QuarkusTestResourceLifecycleManager
         POSTGRES.start();
       }
       return Map.of(
-          "quarkus.datasource.db-kind", "postgresql",
-          "quarkus.datasource.jdbc.url", POSTGRES.getJdbcUrl(),
-          "quarkus.datasource.username", POSTGRES.getUsername(),
-          "quarkus.datasource.password", POSTGRES.getPassword(),
-          "quarkus.datasource.devservices.enabled", "false",
-          "quarkus.flyway.migrate-at-start", "true");
+          "quarkus.datasource.db-kind",
+          "postgresql",
+          "quarkus.datasource.jdbc.url",
+          POSTGRES.getJdbcUrl(),
+          "quarkus.datasource.username",
+          POSTGRES.getUsername(),
+          "quarkus.datasource.password",
+          POSTGRES.getPassword(),
+          "quarkus.datasource.devservices.enabled",
+          "false",
+          "quarkus.flyway.migrate-at-start",
+          "true");
     } catch (RuntimeException e) {
       LOG.warn(
           "Testcontainers PostgreSQL unavailable, falling back to localhost test datasource", e);

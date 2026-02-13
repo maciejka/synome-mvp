@@ -40,6 +40,52 @@ docker compose up -d
 ./gradlew build
 ```
 
+## Code Quality / QA Tools
+
+The project enforces four QA tools from `build.gradle.kts`:
+
+- **Spotless** (formatting)
+  - Purpose: Enforces Google Java Format and basic whitespace/import hygiene.
+  - Config: `build.gradle.kts` (`spotless { java { ... } }`)
+  - Commands:
+    - Check formatting: `./gradlew spotlessCheck`
+    - Auto-fix formatting: `./gradlew spotlessApply`
+
+- **Checkstyle** (style and static lint rules)
+  - Purpose: Fails build on style violations and warnings (`maxWarnings = 0`, `isIgnoreFailures = false`).
+  - Config: `config/checkstyle/checkstyle.xml`
+  - Scope: Only `checkstyleMain` and `checkstyleTest` are enabled (hand-written code in `src/main/java` and `src/test/java`).
+  - Commands:
+    - Run all Checkstyle checks: `./gradlew checkstyleMain checkstyleTest`
+
+- **SpotBugs** (bug pattern static analysis)
+  - Purpose: Detects potential correctness bugs (confidence level `MEDIUM`, with repo-specific excludes).
+  - Config: `config/spotbugs/exclude-filter.xml`
+  - Scope: Only `spotbugsMain` and `spotbugsTest` are enabled.
+  - Reports: HTML enabled, XML disabled.
+  - Commands:
+    - Run SpotBugs checks: `./gradlew spotbugsMain spotbugsTest`
+
+- **JaCoCo** (test coverage reporting)
+  - Purpose: Generates test coverage reports after tests.
+  - Config: `build.gradle.kts` (`jacoco { toolVersion = "0.8.12" }`)
+  - Reports: XML and HTML enabled (`jacocoTestReport`), and `test` finalizes with this report task.
+  - Commands:
+    - Run tests with coverage report generation: `./gradlew test`
+    - Generate report explicitly: `./gradlew jacocoTestReport`
+
+Recommended local QA pass:
+
+```bash
+./gradlew spotlessCheck checkstyleMain checkstyleTest spotbugsMain spotbugsTest test
+```
+
+Commit gate policy:
+
+- Run the aggregate QA task manually before every commit:
+  - `./gradlew qa`
+- Do not create commits when `./gradlew qa` fails.
+
 ## Architecture
 
 See [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) for full technical architecture and [docs/PLANS.md](docs/PLANS.md) for implementation phases.

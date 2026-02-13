@@ -18,13 +18,16 @@ import org.junit.jupiter.api.Test;
 @QuarkusTestResource(PostgresTestResource.class)
 class ChangesetApiContractTest {
 
+  private static final String CHANGESET_ID_PLACEHOLDER = "__CHANGESET_ID__";
+
   @Test
   void duplicateSamePayloadReturnsOriginalResponse() {
     UUID changesetId = UUID.randomUUID();
     String payload =
-        """
+        withChangesetId(
+            """
         {
-          "id": "%s",
+          "id": "__CHANGESET_ID__",
           "entries": [
             {
               "kind": "FACT",
@@ -40,8 +43,8 @@ class ChangesetApiContractTest {
             }
           ]
         }
-        """
-            .formatted(changesetId);
+        """,
+            changesetId);
 
     Number firstSequence =
         given()
@@ -69,9 +72,10 @@ class ChangesetApiContractTest {
   void duplicateDifferentPayloadReturnsConflictEnvelope() {
     UUID changesetId = UUID.randomUUID();
     String firstPayload =
-        """
+        withChangesetId(
+            """
         {
-          "id": "%s",
+          "id": "__CHANGESET_ID__",
           "entries": [
             {
               "kind": "FACT",
@@ -87,12 +91,13 @@ class ChangesetApiContractTest {
             }
           ]
         }
-        """
-            .formatted(changesetId);
+        """,
+            changesetId);
     String changedPayload =
-        """
+        withChangesetId(
+            """
         {
-          "id": "%s",
+          "id": "__CHANGESET_ID__",
           "entries": [
             {
               "kind": "FACT",
@@ -108,8 +113,8 @@ class ChangesetApiContractTest {
             }
           ]
         }
-        """
-            .formatted(changesetId);
+        """,
+            changesetId);
 
     given()
         .contentType(ContentType.JSON)
@@ -136,9 +141,10 @@ class ChangesetApiContractTest {
   @Test
   void validationErrorEnvelopeShapeIsStable() {
     String invalidPayload =
-        """
+        withChangesetId(
+            """
         {
-          "id": "%s",
+          "id": "__CHANGESET_ID__",
           "entries": [
             {
               "kind": "EVENT",
@@ -147,8 +153,8 @@ class ChangesetApiContractTest {
             }
           ]
         }
-        """
-            .formatted(UUID.randomUUID());
+        """,
+            UUID.randomUUID());
 
     given()
         .contentType(ContentType.JSON)
@@ -161,5 +167,9 @@ class ChangesetApiContractTest {
         .body("details.errors", hasSize(greaterThan(0)))
         .body("timestamp", not(nullValue()))
         .body("requestId", not(nullValue()));
+  }
+
+  private static String withChangesetId(String payload, UUID changesetId) {
+    return payload.replace(CHANGESET_ID_PLACEHOLDER, changesetId.toString());
   }
 }

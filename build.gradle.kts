@@ -106,6 +106,9 @@ jacoco {
 
 tasks.jacocoTestReport {
     dependsOn(tasks.test)
+    // Jacoco scans class directories that include Quarkus-generated output.
+    // Declare this dependency explicitly to satisfy Gradle task validation.
+    dependsOn("compileQuarkusGeneratedSourcesJava")
     reports {
         xml.required = true
         html.required = true
@@ -118,4 +121,17 @@ tasks.test {
     environment("DOCKER_API_VERSION", "1.44")
     systemProperty("docker.api.version", "1.44")
     finalizedBy(tasks.jacocoTestReport)
+}
+
+tasks.register("qa") {
+    group = "verification"
+    description = "Runs the full QA gate: formatting, static analysis, tests, and coverage."
+    dependsOn(
+        "spotlessCheck",
+        "checkstyleMain",
+        "checkstyleTest",
+        "spotbugsMain",
+        "spotbugsTest",
+        "test",
+    )
 }
