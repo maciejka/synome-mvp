@@ -64,6 +64,7 @@ class EngineSessionUnitTest {
   }
 
   @Test
+  @SuppressWarnings("removal")
   void ioFailureWhileReadingDrlIsWrapped() {
     ClassLoader original = Thread.currentThread().getContextClassLoader();
     ClassLoader brokenLoader =

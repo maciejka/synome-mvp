@@ -13,20 +13,6 @@ repositories {
     mavenCentral()
 }
 
-configurations.configureEach {
-    resolutionStrategy {
-        force(
-            "org.testcontainers:testcontainers:1.21.2",
-            "org.testcontainers:jdbc:1.21.2",
-            "org.testcontainers:database-commons:1.21.2",
-            "org.testcontainers:postgresql:1.21.2",
-            "com.github.docker-java:docker-java-api:3.5.0",
-            "com.github.docker-java:docker-java-transport:3.5.0",
-            "com.github.docker-java:docker-java-transport-zerodep:3.5.0",
-        )
-    }
-}
-
 dependencies {
     implementation(enforcedPlatform(libs.quarkus.bom))
 
@@ -179,6 +165,15 @@ tasks.test {
     // Keep Testcontainers compatible with newer local Docker daemon minimum API versions.
     environment("DOCKER_API_VERSION", "1.44")
     systemProperty("docker.api.version", "1.44")
+    systemProperty("api.version", "1.44")
+    // Forward Gradle JVM flag to the test JVM so `-Dsynome.testcontainers.enabled=true`
+    // reliably enables the Testcontainers branch in PostgresTestResource.
+    providers.systemProperty("synome.testcontainers.enabled").orNull?.let {
+        systemProperty("synome.testcontainers.enabled", it)
+    }
+    // Quarkus JUnit extension still uses deprecated CloseableResource API.
+    // Keep auto-close disabled until upstream migrates to AutoCloseable.
+    systemProperty("junit.jupiter.extensions.store.close.autocloseable.enabled", "false")
     finalizedBy(tasks.jacocoTestReport)
 }
 

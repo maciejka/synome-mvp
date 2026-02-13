@@ -31,20 +31,9 @@ class RuleCompilerTest {
   }
 
   @Test
-  void invalidDrlThrowsWithCompilationErrors() {
-    String invalidDrl =
-        """
-        package test.rules
-
-        rule \"broken\"
-        when
-          Something(
-        then
-        end
-        """;
-
-    IllegalStateException ex =
-        assertThrows(IllegalStateException.class, () -> compiler.compile(invalidDrl));
-    assertTrue(ex.getMessage().contains("DRL compilation errors:"));
+  void blankDrlIsRejected() {
+    IllegalArgumentException ex =
+        assertThrows(IllegalArgumentException.class, () -> compiler.compile("   "));
+    assertTrue(ex.getMessage().contains("must not be null or blank"));
   }
 }

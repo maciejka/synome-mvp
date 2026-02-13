@@ -35,6 +35,24 @@ docker compose up -d
 ./gradlew test --continuous --tests "MyTest"
 ```
 
+### Testcontainers (Optional Test Mode)
+The test suite defaults to Testcontainers-backed PostgreSQL.
+
+Disable Testcontainers explicitly when needed (for example, to force localhost PostgreSQL):
+```bash
+# Disable via Gradle/JVM property
+./gradlew test -Dsynome.testcontainers.enabled=false
+
+# Or disable via environment variable
+SYNOME_TESTCONTAINERS_ENABLED=false ./gradlew test
+```
+
+Notes:
+- The `-Dsynome.testcontainers.enabled=<...>` flag is forwarded to the test JVM by `build.gradle.kts`.
+- If unset, Testcontainers mode is enabled by default.
+- If Testcontainers is enabled but Docker is unavailable/misconfigured, tests fall back to localhost datasource.
+- For Testcontainers mode, ensure Docker daemon is running and your user can access `/var/run/docker.sock`.
+
 ### Build
 ```bash
 ./gradlew build

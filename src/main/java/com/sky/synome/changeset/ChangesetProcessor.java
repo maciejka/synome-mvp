@@ -123,10 +123,9 @@ public class ChangesetProcessor {
       List<EngineSession.RestorableFact> snapshot,
       RuntimeException cause) {
     LOG.warnf(
-        cause,
-        "Changeset %s failed after reservation seq=%d; rolling back session state",
-        changesetId,
-        reservationSeq);
+        "Changeset %s failed after reservation seq=%d; rolling back session state (%s: %s)",
+        changesetId, reservationSeq, cause.getClass().getSimpleName(), cause.getMessage());
+    LOG.debugf(cause, "Changeset %s rollback trigger details", changesetId);
 
     try {
       engineSession.rebuildFromSnapshot(snapshot);
