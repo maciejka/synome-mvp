@@ -115,9 +115,15 @@ Recommended local QA pass:
 
 ## Commit gate policy:
 
+- Before running QA, run auto-formatting:
+  - `./gradlew spotlessApply`
 - Run the aggregate QA task manually before every commit:
   - `./gradlew qa`
 - Do not create commits when `./gradlew qa` fails.
+- Do not move any execution plan file from `docs/exec-plans/pending/` to
+  `docs/exec-plans/completed/` until both steps above succeed in order:
+  1. `./gradlew spotlessApply`
+  2. `./gradlew qa`
 - Enforce commit quality thresholds before every commit:
   - Static analysis: zero new findings (no new SpotBugs/Checkstyle issues, no warning regressions).
   - Complexity limits: no new methods over agreed thresholds (for example cyclomatic `> 10` or cognitive `> 15`).
