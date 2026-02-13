@@ -248,15 +248,13 @@ Standard error envelope:
 
 ```json
 {
-  "error": {
-    "code": "DUPLICATE_CHANGESET_PAYLOAD_MISMATCH",
-    "message": "changeset_id already exists with different payload",
-    "details": {
-      "changesetId": "550e8400-e29b-41d4-a716-446655440000"
-    },
-    "timestamp": "2026-02-13T12:00:00Z",
-    "requestId": "req-123"
-  }
+  "code": "DUPLICATE_CHANGESET_PAYLOAD_MISMATCH",
+  "message": "changeset_id already exists with different payload",
+  "details": {
+    "changesetId": "550e8400-e29b-41d4-a716-446655440000"
+  },
+  "timestamp": "2026-02-13T12:00:00Z",
+  "requestId": "req-123"
 }
 ```
 

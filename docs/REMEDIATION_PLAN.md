@@ -194,4 +194,4 @@ All must pass:
 - [x] Task 6: Lock timeout config wiring.
 - [x] Task 7: Testcontainers integration profile.
 - [x] Task 8: New regression and contract tests.
-- Task 9: Final docs synchronization pass.
+- [x] Task 9: Final docs synchronization pass.

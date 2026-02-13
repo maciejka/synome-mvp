@@ -20,35 +20,35 @@ This file is the source of truth for current implementation status and delivery 
 ### Delivered
 
 - Phase 0 foundation is complete (build, Quarkus app, Flyway, PostgreSQL, jOOQ producer).
-- Phase 1 core path is partially delivered:
+- Phase 1 stabilization hardening is delivered:
   - Engine session bootstraps with DRL compilation.
-  - Changeset apply API exists.
-  - Base fact registry and lock exist.
-  - Basic derivation tracking exists.
-  - Core tests exist for upsert/update/delete happy paths.
+  - Strict idempotency implemented (`changeset_id` replay + payload mismatch conflict).
+  - Changeset atomicity implemented with reservation/finalize + compensating rollback.
+  - FACT/EVENT contract enforcement implemented in DTO/validator/processor.
+  - Stable conflict code mapped (`DUPLICATE_CHANGESET_PAYLOAD_MISMATCH`).
+  - Lock timeout reads typed config (`engine.lock-timeout-ms`).
+  - Regression + API contract coverage added for idempotency, atomicity, validation, and errors.
+  - Test resource bootstraps PostgreSQL via Testcontainers, with localhost fallback when Docker API
+    compatibility prevents container startup.
 
-### Gaps discovered in review
+### Remaining gaps for next milestones
 
-1. Strict idempotency not yet implemented for duplicate `changeset_id`.
-2. Atomic all-or-nothing changeset behavior is not yet guaranteed.
-3. API contract drift for event/delete payload fields.
-4. `fireUntilHalt()` completion was overstated in prior plan text.
-5. Error response schema drift between docs and runtime output.
-6. Testing strategy in docs assumes Testcontainers, current tests use localhost DB settings.
+1. `fireUntilHalt()` is still not part of the active write-path runtime.
+2. Recovery/checkpoint, CEP replay window, and provenance phases remain unimplemented.
 
 ## Milestones
 
 ### M1: Phase 1 Stabilization (Must complete before Phase 2)
-Status: PARTIAL
+Status: DONE
 
 Goal: harden existing write path and contracts before checkpoint/replay work.
 
-- [ ] Implement strict idempotency contract.
-- [ ] Guarantee changeset atomicity.
-- [ ] Align validator + DTO + examples for FACT/EVENT contract.
-- [ ] Align runtime error schema with documented contract.
-- [ ] Use config-driven lock timeout (remove hardcoded timeout).
-- [ ] Add regression tests for all above.
+- [x] Implement strict idempotency contract.
+- [x] Guarantee changeset atomicity.
+- [x] Align validator + DTO + examples for FACT/EVENT contract.
+- [x] Align runtime error schema with documented contract.
+- [x] Use config-driven lock timeout (remove hardcoded timeout).
+- [x] Add regression tests for all above.
 
 Exit criteria:
 
