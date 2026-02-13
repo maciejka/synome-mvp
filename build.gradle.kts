@@ -3,7 +3,9 @@ plugins {
     alias(libs.plugins.quarkus)
     alias(libs.plugins.spotless)
     alias(libs.plugins.spotbugs)
+    alias(libs.plugins.dependencycheck)
     checkstyle
+    pmd
     jacoco
 }
 
@@ -100,6 +102,60 @@ tasks.named<com.github.spotbugs.snom.SpotBugsTask>("spotbugsMain") {
     dependsOn("compileQuarkusGeneratedSourcesJava")
 }
 
+// PMD complexity checks
+pmd {
+    toolVersion = "6.55.0"
+    isIgnoreFailures = false
+    ruleSets = listOf()
+    ruleSetFiles = files("config/pmd/ruleset.xml")
+}
+
+tasks.withType<Pmd> {
+    // Only check hand-written source, skip Quarkus-generated source sets
+    enabled = name == "pmdMain" || name == "pmdTest"
+    source = if (name == "pmdMain") fileTree("src/main/java") else fileTree("src/test/java")
+    reports {
+        html.required.set(true)
+        xml.required.set(false)
+    }
+}
+
+val cpdMinimumTokens = 100
+
+fun registerCpdTask(taskName: String, sourceRoot: String) {
+    tasks.register<JavaExec>(taskName) {
+        group = "verification"
+        description = "Runs PMD CPD duplication checks for $sourceRoot."
+        classpath = configurations.named("pmd").get()
+        mainClass.set("net.sourceforge.pmd.cpd.CPD")
+        args(
+            "--minimum-tokens", cpdMinimumTokens.toString(),
+            "--language", "java",
+            "--format", "text",
+            "--fail-on-violation", "true",
+            "--dir", sourceRoot,
+        )
+        inputs.files(fileTree(sourceRoot) { include("**/*.java") })
+    }
+}
+
+registerCpdTask("cpdMain", "src/main/java")
+registerCpdTask("cpdTest", "src/test/java")
+
+dependencyCheck {
+    failBuildOnCVSS = 7.0F
+    formats = listOf("HTML", "JSON")
+
+    analyzers.apply {
+        assemblyEnabled = false
+    }
+
+    val nvdApiKey = System.getenv("NVD_API_KEY")
+    if (!nvdApiKey.isNullOrBlank()) {
+        nvd.apiKey = nvdApiKey
+    }
+}
+
 jacoco {
     toolVersion = "0.8.12"
 }
@@ -132,6 +188,11 @@ tasks.register("qa") {
         "checkstyleTest",
         "spotbugsMain",
         "spotbugsTest",
+        "pmdMain",
+        "pmdTest",
+        "cpdMain",
+        "cpdTest",
+        "dependencyCheckAnalyze",
         "test",
     )
 }

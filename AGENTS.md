@@ -42,7 +42,7 @@ docker compose up -d
 
 ## Code Quality / QA Tools
 
-The project enforces four QA tools from `build.gradle.kts`:
+The project enforces six QA tools from `build.gradle.kts`:
 
 - **Spotless** (formatting)
   - Purpose: Enforces Google Java Format and basic whitespace/import hygiene.
@@ -66,6 +66,21 @@ The project enforces four QA tools from `build.gradle.kts`:
   - Commands:
     - Run SpotBugs checks: `./gradlew spotbugsMain spotbugsTest`
 
+- **PMD + CPD** (complexity and duplication checks)
+  - Purpose: Enforces complexity thresholds via PMD and copy/paste duplication detection via PMD CPD.
+  - Config: `config/pmd/ruleset.xml` and Gradle CPD task settings in `build.gradle.kts`.
+  - Scope: `pmdMain`, `pmdTest`, `cpdMain`, and `cpdTest`.
+  - Commands:
+    - Run PMD checks: `./gradlew pmdMain pmdTest`
+    - Run CPD checks: `./gradlew cpdMain cpdTest`
+
+- **OWASP Dependency-Check** (dependency security scan)
+  - Purpose: Detects known vulnerabilities in project dependencies.
+  - Config: `build.gradle.kts` (`dependencyCheck { ... }`)
+  - Note: Set `NVD_API_KEY` in your environment for faster NVD feed updates.
+  - Commands:
+    - Run dependency vulnerability analysis: `./gradlew dependencyCheckAnalyze`
+
 - **JaCoCo** (test coverage reporting)
   - Purpose: Generates test coverage reports after tests.
   - Config: `build.gradle.kts` (`jacoco { toolVersion = "0.8.12" }`)
@@ -77,7 +92,7 @@ The project enforces four QA tools from `build.gradle.kts`:
 Recommended local QA pass:
 
 ```bash
-./gradlew spotlessCheck checkstyleMain checkstyleTest spotbugsMain spotbugsTest test
+./gradlew spotlessCheck checkstyleMain checkstyleTest spotbugsMain spotbugsTest pmdMain pmdTest cpdMain cpdTest dependencyCheckAnalyze test
 ```
 
 ## Commit gate policy:
@@ -85,6 +100,14 @@ Recommended local QA pass:
 - Run the aggregate QA task manually before every commit:
   - `./gradlew qa`
 - Do not create commits when `./gradlew qa` fails.
+- Enforce commit quality thresholds before every commit:
+  - Diff coverage (not just global coverage): `>= 90%` of changed lines.
+  - Branch coverage on changed code: `>= 80%` for changed files/paths.
+  - Mutation score (test quality): `>= 65–75%` on changed modules.
+  - Static analysis: zero new findings (no new SpotBugs/Checkstyle issues, no warning regressions).
+  - Complexity limits: no new methods over agreed thresholds (for example cyclomatic `> 10` or cognitive `> 15`).
+  - Duplication: no new duplicate blocks; duplication ratio must stay stable or lower.
+  - Security dependency scan: zero new high/critical vulnerabilities.
 - Keep commit subjects aligned with existing repository history:
   - Use a capitalized imperative summary without a `type:` prefix (for example: `Document commit message style policy`)
   - Keep subject short, descriptive, and without trailing punctuation.

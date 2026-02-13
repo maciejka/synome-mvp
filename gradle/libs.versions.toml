@@ -5,6 +5,7 @@ jooq = "3.19.18"
 spotless = "7.0.2"
 spotbugs-plugin = "6.1.7"
 testcontainers = "1.21.2"
+dependency-check-plugin = "10.0.4"
 
 [libraries]
 quarkus-bom = { module = "io.quarkus.platform:quarkus-bom", version.ref = "quarkus" }
@@ -27,3 +28,4 @@ testcontainers-postgresql = { module = "org.testcontainers:postgresql", version.
 quarkus = { id = "io.quarkus", version.ref = "quarkus" }
 spotless = { id = "com.diffplug.spotless", version.ref = "spotless" }
 spotbugs = { id = "com.github.spotbugs", version.ref = "spotbugs-plugin" }
+dependencycheck = { id = "org.owasp.dependencycheck", version.ref = "dependency-check-plugin" }
