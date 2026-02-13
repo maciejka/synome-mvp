@@ -186,7 +186,7 @@ All must pass:
 
 ## Suggested Task Breakdown
 
-- Task 1: Migration + log layer idempotency read/write APIs.
+- [x] Task 1: Migration + log layer idempotency read/write APIs.
 - Task 2: Processor preflight duplicate semantics.
 - Task 3: Conflict exception + error mapper updates.
 - Task 4: Atomicity mechanism implementation.
@@ -195,4 +195,3 @@ All must pass:
 - Task 7: Testcontainers integration profile.
 - Task 8: New regression and contract tests.
 - Task 9: Final docs synchronization pass.
-
