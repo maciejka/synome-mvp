@@ -3,6 +3,7 @@ package com.sky.synome.api;
 import com.sky.synome.api.dto.ErrorResponse;
 import com.sky.synome.changeset.ChangesetProcessor;
 import com.sky.synome.changeset.ChangesetValidator;
+import com.sky.synome.changeset.DuplicatePayloadMismatchException;
 import jakarta.ws.rs.core.Response;
 import jakarta.ws.rs.ext.ExceptionMapper;
 import jakarta.ws.rs.ext.Provider;
@@ -39,6 +40,18 @@ public class ErrorMapper implements ExceptionMapper<Exception> {
                   "LOCK_TIMEOUT",
                   "Engine is busy processing another changeset",
                   Map.of(),
+                  Instant.now(),
+                  requestId))
+          .build();
+    }
+
+    if (exception instanceof DuplicatePayloadMismatchException dpe) {
+      return Response.status(Response.Status.CONFLICT)
+          .entity(
+              new ErrorResponse(
+                  "DUPLICATE_CHANGESET_PAYLOAD_MISMATCH",
+                  dpe.getMessage(),
+                  Map.of("changesetId", dpe.changesetId()),
                   Instant.now(),
                   requestId))
           .build();

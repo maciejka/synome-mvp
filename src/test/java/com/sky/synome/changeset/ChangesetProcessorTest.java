@@ -276,8 +276,9 @@ class ChangesetProcessorTest {
                     null)),
             Map.of());
 
-    IllegalStateException ex =
-        assertThrows(IllegalStateException.class, () -> processor.process(changedPayload));
+    DuplicatePayloadMismatchException ex =
+        assertThrows(
+            DuplicatePayloadMismatchException.class, () -> processor.process(changedPayload));
     assertTrue(ex.getMessage().contains("different payload"));
 
     var entryAfter = engineSession.factRegistry().get(factKey);

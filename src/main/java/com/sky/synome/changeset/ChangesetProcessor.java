@@ -114,7 +114,7 @@ public class ChangesetProcessor {
 
     var lookup = replay.get();
     if (!lookup.checksumMatches()) {
-      throw new IllegalStateException("changeset_id already exists with different payload");
+      throw new DuplicatePayloadMismatchException(changeset.id());
     }
     if (lookup.responsePayload() == null) {
       throw new IllegalStateException("Stored response_payload missing for duplicate changeset");
