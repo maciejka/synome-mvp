@@ -61,7 +61,7 @@ Exit criteria:
 Status: PARTIAL (core runtime and API implemented; hardening and full QA gate still pending)
 
 Goal: deterministic restart from latest checkpoint plus ordered replay, without manual repair.
-Detailed execution plan: `docs/M2_EXECUTION_PLAN.md`.
+Detailed execution plan: `docs/exec-plans/completed/M2_EXECUTION_PLAN.md`.
 
 - [x] Checkpoint schema groundwork exists (`V002__checkpoints.sql`).
 - [x] Define checkpoint domain contract (payload schema version + metadata contract + consistency validation).
