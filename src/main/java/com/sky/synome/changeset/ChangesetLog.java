@@ -36,10 +36,13 @@ public class ChangesetLog {
   private static final Field<Integer> DURATION_MS_FIELD = field("duration_ms", Integer.class);
   private static final Field<JSONB> RESPONSE_PAYLOAD_FIELD =
       field("response_payload", JSONB.class);
+  private static final Field<String> ERROR_FIELD = field("error", String.class);
 
   @Inject DSLContext dsl;
 
   @Inject ObjectMapper objectMapper;
+
+  private volatile boolean failNextFinalizeForTest;
 
   public long append(Changeset changeset, int rulesFired, long durationMs) {
     return appendInternal(changeset, rulesFired, durationMs, null);
@@ -82,8 +85,7 @@ public class ChangesetLog {
     return Optional.of(new ReplayLookup(checksumMatches, logged.responsePayload()));
   }
 
-  private long appendInternal(
-      Changeset changeset, int rulesFired, long durationMs, ChangesetResponse response) {
+  public long reserve(Changeset changeset) {
     String payloadJson = serializePayload(changeset);
     String checksum = sha256(payloadJson);
 
@@ -94,32 +96,59 @@ public class ChangesetLog {
             .set(CHECKSUM_FIELD, checksum)
             .set(APPLIED_AT_FIELD, OffsetDateTime.now())
             .set(ENGINE_CLOCK_AT_FIELD, 0L)
-            .set(RULES_FIRED_FIELD, rulesFired)
-            .set(DURATION_MS_FIELD, Math.toIntExact(durationMs))
+            .set(ERROR_FIELD, (String) null)
             .returning(SEQUENCE_NUM_FIELD)
             .fetchOne();
     if (record == null) {
       throw new IllegalStateException("INSERT INTO changeset_log returned no record");
     }
-    long sequenceNum = record.get(SEQUENCE_NUM_FIELD);
-
-    if (response != null) {
-      persistReplayResponse(sequenceNum, response);
-    }
-
-    return sequenceNum;
+    return record.get(SEQUENCE_NUM_FIELD);
   }
 
-  private void persistReplayResponse(long sequenceNum, ChangesetResponse response) {
-    ChangesetResponse replayResponse = copyResponseWithSequence(response, sequenceNum);
+  public void finalizeSuccess(
+      long sequenceNum, int rulesFired, long durationMs, ChangesetResponse response) {
+    if (failNextFinalizeForTest) {
+      failNextFinalizeForTest = false;
+      throw new IllegalStateException("Injected failure in ChangesetLog.finalizeSuccess");
+    }
+
+    JSONB responsePayload = null;
+    if (response != null) {
+      ChangesetResponse replayResponse = copyResponseWithSequence(response, sequenceNum);
+      responsePayload = JSONB.valueOf(serializeResponse(replayResponse));
+    }
+
     int updated =
         dsl.update(CHANGESET_LOG_TABLE)
-            .set(RESPONSE_PAYLOAD_FIELD, JSONB.valueOf(serializeResponse(replayResponse)))
+            .set(RULES_FIRED_FIELD, rulesFired)
+            .set(DURATION_MS_FIELD, Math.toIntExact(durationMs))
+            .set(APPLIED_AT_FIELD, OffsetDateTime.now())
+            .set(RESPONSE_PAYLOAD_FIELD, responsePayload)
+            .set(ERROR_FIELD, (String) null)
             .where(SEQUENCE_NUM_FIELD.eq(sequenceNum))
             .execute();
     if (updated != 1) {
-      throw new IllegalStateException(
-          "Failed to persist response_payload for sequence " + sequenceNum);
+      throw new IllegalStateException("Failed to finalize changeset_log sequence " + sequenceNum);
+    }
+  }
+
+  public void cancelReservation(long sequenceNum) {
+    dsl.deleteFrom(CHANGESET_LOG_TABLE).where(SEQUENCE_NUM_FIELD.eq(sequenceNum)).execute();
+  }
+
+  void injectFinalizeFailureForTest() {
+    failNextFinalizeForTest = true;
+  }
+
+  private long appendInternal(
+      Changeset changeset, int rulesFired, long durationMs, ChangesetResponse response) {
+    long sequenceNum = reserve(changeset);
+    try {
+      finalizeSuccess(sequenceNum, rulesFired, durationMs, response);
+      return sequenceNum;
+    } catch (RuntimeException e) {
+      cancelReservation(sequenceNum);
+      throw e;
     }
   }
 

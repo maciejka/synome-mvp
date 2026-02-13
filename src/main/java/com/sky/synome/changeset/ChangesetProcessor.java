@@ -45,61 +45,67 @@ public class ChangesetProcessor {
         return replay;
       }
 
-      EffectsSummary effects = new EffectsSummary();
       KieSession session = engineSession.kieSession();
       FactRegistry registry = engineSession.factRegistry();
-      DerivationTracker tracker = engineSession.derivationTracker();
+      List<EngineSession.RestorableFact> snapshot = snapshotBaseFacts(session, registry);
+      long reservationSeq = changesetLog.reserve(changeset);
 
-      // Start tracking before applying entries to catch TMS retractions
-      // triggered by base fact deletions
-      tracker.startTracking();
+      try {
+        EffectsSummary effects = new EffectsSummary();
+        DerivationTracker tracker = engineSession.derivationTracker();
+        int rulesFired;
 
-      // Apply entries
-      for (ChangesetEntry entry : changeset.entries()) {
-        applyEntry(entry, session, registry, effects);
+        // Start tracking before applying entries to catch TMS retractions
+        // triggered by base fact deletions.
+        tracker.startTracking();
+        try {
+          for (ChangesetEntry entry : changeset.entries()) {
+            applyEntry(entry, session, registry, effects);
+          }
+          rulesFired = session.fireAllRules();
+        } finally {
+          tracker.stopTracking();
+        }
+
+        // Collect derived facts.
+        List<DerivedFactSummary> derivedFacts = new ArrayList<>();
+        for (DerivationTracker.Derivation d : tracker.getDerivations()) {
+          effects.derivedFactsCreated++;
+          derivedFacts.add(
+              new DerivedFactSummary(
+                  UUID.randomUUID().toString(),
+                  d.factType(),
+                  d.ruleName(),
+                  d.factType() + " derived by " + d.ruleName()));
+        }
+        effects.derivedFactsRetracted = tracker.getRetractions().size();
+
+        long durationMs = System.currentTimeMillis() - start;
+
+        var response = new ChangesetResponse();
+        response.changesetId = changeset.id();
+        response.status = "APPLIED";
+        response.rulesFired = rulesFired;
+        response.durationMs = durationMs;
+        response.effects = effects;
+        response.newDerivedFacts = derivedFacts;
+
+        changesetLog.finalizeSuccess(reservationSeq, rulesFired, durationMs, response);
+        response.sequenceNum = reservationSeq;
+
+        LOG.infof(
+            "Changeset %s applied: seq=%d, rulesFired=%d, derived=%d, retracted=%d, duration=%dms",
+            changeset.id(),
+            reservationSeq,
+            rulesFired,
+            effects.derivedFactsCreated,
+            effects.derivedFactsRetracted,
+            durationMs);
+        return response;
+      } catch (RuntimeException e) {
+        rollbackAtomicFailure(changeset.id(), reservationSeq, snapshot, e);
+        throw e;
       }
-
-      // Fire rules
-      int rulesFired = session.fireAllRules();
-      tracker.stopTracking();
-
-      // Collect derived facts
-      List<DerivedFactSummary> derivedFacts = new ArrayList<>();
-      for (DerivationTracker.Derivation d : tracker.getDerivations()) {
-        effects.derivedFactsCreated++;
-        derivedFacts.add(
-            new DerivedFactSummary(
-                UUID.randomUUID().toString(),
-                d.factType(),
-                d.ruleName(),
-                d.factType() + " derived by " + d.ruleName()));
-      }
-      effects.derivedFactsRetracted = tracker.getRetractions().size();
-
-      long durationMs = System.currentTimeMillis() - start;
-
-      var response = new ChangesetResponse();
-      response.changesetId = changeset.id();
-      response.status = "APPLIED";
-      response.rulesFired = rulesFired;
-      response.durationMs = durationMs;
-      response.effects = effects;
-      response.newDerivedFacts = derivedFacts;
-
-      // Log to database and persist canonical replay payload
-      long seqNum = changesetLog.append(changeset, response);
-      response.sequenceNum = seqNum;
-
-      LOG.infof(
-          "Changeset %s applied: seq=%d, rulesFired=%d, derived=%d, retracted=%d, duration=%dms",
-          changeset.id(),
-          seqNum,
-          rulesFired,
-          effects.derivedFactsCreated,
-          effects.derivedFactsRetracted,
-          durationMs);
-
-      return response;
 
     } finally {
       lock.release();
@@ -125,6 +131,48 @@ public class ChangesetProcessor {
         changeset.id(),
         lookup.responsePayload().sequenceNum);
     return lookup.responsePayload();
+  }
+
+  private List<EngineSession.RestorableFact> snapshotBaseFacts(
+      KieSession session, FactRegistry registry) {
+    List<EngineSession.RestorableFact> snapshot = new ArrayList<>();
+    for (Map.Entry<String, FactRegistry.FactEntry> entry : registry.entries()) {
+      FactRegistry.FactEntry factEntry = entry.getValue();
+      Object factObject = session.getObject(factEntry.handle());
+      if (factObject == null) {
+        continue;
+      }
+      Map<String, Object> dataSnapshot =
+          factEntry.data() == null ? Map.of() : Map.copyOf(factEntry.data());
+      snapshot.add(
+          new EngineSession.RestorableFact(
+              entry.getKey(), factEntry.factType(), dataSnapshot, factObject));
+    }
+    return snapshot;
+  }
+
+  private void rollbackAtomicFailure(
+      UUID changesetId,
+      long reservationSeq,
+      List<EngineSession.RestorableFact> snapshot,
+      RuntimeException cause) {
+    LOG.warnf(
+        cause,
+        "Changeset %s failed after reservation seq=%d; rolling back session state",
+        changesetId,
+        reservationSeq);
+
+    try {
+      engineSession.rebuildFromSnapshot(snapshot);
+    } catch (RuntimeException rollbackFailure) {
+      cause.addSuppressed(rollbackFailure);
+    }
+
+    try {
+      changesetLog.cancelReservation(reservationSeq);
+    } catch (RuntimeException cancelFailure) {
+      cause.addSuppressed(cancelFailure);
+    }
   }
 
   private void applyEntry(

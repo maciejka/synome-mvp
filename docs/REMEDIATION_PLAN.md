@@ -189,7 +189,7 @@ All must pass:
 - [x] Task 1: Migration + log layer idempotency read/write APIs.
 - [x] Task 2: Processor preflight duplicate semantics.
 - [x] Task 3: Conflict exception + error mapper updates.
-- Task 4: Atomicity mechanism implementation.
+- [x] Task 4: Atomicity mechanism implementation.
 - Task 5: DTO/validator/processor contract alignment for events.
 - Task 6: Lock timeout config wiring.
 - Task 7: Testcontainers integration profile.

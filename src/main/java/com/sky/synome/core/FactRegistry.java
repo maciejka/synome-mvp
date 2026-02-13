@@ -35,6 +35,10 @@ public class FactRegistry {
     return facts.size();
   }
 
+  public void clear() {
+    facts.clear();
+  }
+
   public Map<String, Long> countByType() {
     var counts = new java.util.HashMap<String, Long>();
     for (FactEntry entry : facts.values()) {

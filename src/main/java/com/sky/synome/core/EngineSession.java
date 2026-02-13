@@ -8,12 +8,15 @@ import jakarta.inject.Inject;
 import java.io.IOException;
 import java.io.InputStream;
 import java.nio.charset.StandardCharsets;
+import java.util.List;
+import java.util.Map;
 import org.jboss.logging.Logger;
 import org.kie.api.KieBase;
 import org.kie.api.KieServices;
 import org.kie.api.runtime.KieSession;
 import org.kie.api.runtime.KieSessionConfiguration;
 import org.kie.api.runtime.conf.ClockTypeOption;
+import org.kie.api.runtime.rule.FactHandle;
 
 @Startup
 @ApplicationScoped
@@ -30,6 +33,9 @@ public class EngineSession {
   private final SessionLock sessionLock = new SessionLock();
   private final DerivationTracker derivationTracker = new DerivationTracker();
 
+  public record RestorableFact(
+      String factKey, String factType, Map<String, Object> data, Object factObject) {}
+
   @Inject
   public EngineSession(EngineConfig config, RuleCompiler compiler) {
     this.config = config;
@@ -43,11 +49,7 @@ public class EngineSession {
 
     String drl = loadDrl(drlPath);
     this.kieBase = compiler.compile(drl);
-
-    KieSessionConfiguration sessionConfig = KieServices.Factory.get().newKieSessionConfiguration();
-    sessionConfig.setOption(ClockTypeOption.PSEUDO);
-    this.kieSession = kieBase.newKieSession(sessionConfig, null);
-    this.kieSession.addEventListener(derivationTracker);
+    this.kieSession = createSession();
 
     LOG.infof(
         "Engine session initialized. Rules in KieBase: %d",
@@ -92,5 +94,29 @@ public class EngineSession {
 
   public DerivationTracker derivationTracker() {
     return derivationTracker;
+  }
+
+  public void rebuildFromSnapshot(List<RestorableFact> snapshot) {
+    if (kieSession != null) {
+      kieSession.dispose();
+    }
+    this.kieSession = createSession();
+    this.factRegistry.clear();
+
+    for (RestorableFact fact : snapshot) {
+      FactHandle handle = this.kieSession.insert(fact.factObject());
+      this.factRegistry.put(
+          fact.factKey(), new FactRegistry.FactEntry(handle, fact.factType(), fact.data()));
+    }
+
+    this.kieSession.fireAllRules();
+  }
+
+  private KieSession createSession() {
+    KieSessionConfiguration sessionConfig = KieServices.Factory.get().newKieSessionConfiguration();
+    sessionConfig.setOption(ClockTypeOption.PSEUDO);
+    KieSession session = kieBase.newKieSession(sessionConfig, null);
+    session.addEventListener(derivationTracker);
+    return session;
   }
 }

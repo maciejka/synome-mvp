@@ -1,6 +1,7 @@
 package com.sky.synome.changeset;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertSame;
 import static org.junit.jupiter.api.Assertions.assertThrows;
@@ -26,6 +27,7 @@ import org.junit.jupiter.api.TestMethodOrder;
 class ChangesetProcessorTest {
 
   @Inject ChangesetProcessor processor;
+  @Inject ChangesetLog changesetLog;
   @Inject EngineSession engineSession;
   @Inject DSLContext dsl;
 
@@ -285,6 +287,75 @@ class ChangesetProcessorTest {
     assertSame(handleBefore, entryAfter.handle(), "Mismatched duplicate must not mutate facts");
     assertEquals("Dora", entryAfter.data().get("name"));
     assertEquals(1, countLogRows(changesetId));
+  }
+
+  @Test
+  @Order(8)
+  void logFinalizeFailureRollsBackSessionAndReservation() {
+    UUID changesetId = UUID.randomUUID();
+    String factKey = "customer:C-500";
+    changesetLog.injectFinalizeFailureForTest();
+
+    Changeset changeset =
+        new Changeset(
+            changesetId,
+            List.of(
+                new ChangesetEntry(
+                    EntryKind.FACT,
+                    ChangesetAction.UPSERT,
+                    factKey,
+                    "Customer",
+                    Map.of(
+                        "customerId",
+                        "C-500",
+                        "name",
+                        "Evan",
+                        "tier",
+                        "STANDARD",
+                        "balance",
+                        2100),
+                    null,
+                    null)),
+            Map.of());
+
+    IllegalStateException ex =
+        assertThrows(IllegalStateException.class, () -> processor.process(changeset));
+    assertTrue(ex.getMessage().contains("Injected failure"));
+    assertFalse(engineSession.factRegistry().contains(factKey));
+    assertEquals(0, countLogRows(changesetId));
+  }
+
+  @Test
+  @Order(9)
+  void applyFailureRollsBackSessionAndReservation() {
+    UUID changesetId = UUID.randomUUID();
+    String factKey = "customer:C-501";
+
+    Changeset changeset =
+        new Changeset(
+            changesetId,
+            List.of(
+                new ChangesetEntry(
+                    EntryKind.FACT,
+                    ChangesetAction.UPSERT,
+                    factKey,
+                    "Customer",
+                    Map.of(
+                        "customerId",
+                        "C-501",
+                        "name",
+                        "Fiona",
+                        "tier",
+                        "STANDARD",
+                        "balance",
+                        Map.of("broken", true)),
+                    null,
+                    null)),
+            Map.of());
+
+    assertThrows(RuntimeException.class, () -> processor.process(changeset));
+    assertFalse(engineSession.factRegistry().contains(factKey));
+    assertEquals(0, countLogRows(changesetId));
   }
 
   private int countLogRows(UUID changesetId) {
