@@ -40,6 +40,11 @@ public class ChangesetProcessor {
     try {
       validator.validate(changeset);
 
+      ChangesetResponse replay = preflightDuplicate(changeset);
+      if (replay != null) {
+        return replay;
+      }
+
       EffectsSummary effects = new EffectsSummary();
       KieSession session = engineSession.kieSession();
       FactRegistry registry = engineSession.factRegistry();
@@ -73,8 +78,17 @@ public class ChangesetProcessor {
 
       long durationMs = System.currentTimeMillis() - start;
 
-      // Log to database
-      long seqNum = changesetLog.append(changeset, rulesFired, durationMs);
+      var response = new ChangesetResponse();
+      response.changesetId = changeset.id();
+      response.status = "APPLIED";
+      response.rulesFired = rulesFired;
+      response.durationMs = durationMs;
+      response.effects = effects;
+      response.newDerivedFacts = derivedFacts;
+
+      // Log to database and persist canonical replay payload
+      long seqNum = changesetLog.append(changeset, response);
+      response.sequenceNum = seqNum;
 
       LOG.infof(
           "Changeset %s applied: seq=%d, rulesFired=%d, derived=%d, retracted=%d, duration=%dms",
@@ -85,19 +99,32 @@ public class ChangesetProcessor {
           effects.derivedFactsRetracted,
           durationMs);
 
-      var response = new ChangesetResponse();
-      response.changesetId = changeset.id();
-      response.sequenceNum = seqNum;
-      response.status = "APPLIED";
-      response.rulesFired = rulesFired;
-      response.durationMs = durationMs;
-      response.effects = effects;
-      response.newDerivedFacts = derivedFacts;
       return response;
 
     } finally {
       lock.release();
     }
+  }
+
+  private ChangesetResponse preflightDuplicate(Changeset changeset) {
+    var replay = changesetLog.findReplay(changeset);
+    if (replay.isEmpty()) {
+      return null;
+    }
+
+    var lookup = replay.get();
+    if (!lookup.checksumMatches()) {
+      throw new IllegalStateException("changeset_id already exists with different payload");
+    }
+    if (lookup.responsePayload() == null) {
+      throw new IllegalStateException("Stored response_payload missing for duplicate changeset");
+    }
+
+    LOG.infof(
+        "Changeset %s replayed from changeset_log with sequence=%d",
+        changeset.id(),
+        lookup.responsePayload().sequenceNum);
+    return lookup.responsePayload();
   }
 
   private void applyEntry(
