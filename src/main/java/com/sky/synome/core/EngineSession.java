@@ -8,21 +8,26 @@ import jakarta.inject.Inject;
 import java.io.IOException;
 import java.io.InputStream;
 import java.nio.charset.StandardCharsets;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.TimeUnit;
 import org.jboss.logging.Logger;
 import org.kie.api.KieBase;
 import org.kie.api.KieServices;
+import org.kie.api.definition.type.FactType;
 import org.kie.api.runtime.KieSession;
 import org.kie.api.runtime.KieSessionConfiguration;
 import org.kie.api.runtime.conf.ClockTypeOption;
 import org.kie.api.runtime.rule.FactHandle;
+import org.kie.api.time.SessionPseudoClock;
 
 @Startup
 @ApplicationScoped
 public class EngineSession {
 
   private static final Logger LOG = Logger.getLogger(EngineSession.class);
+  private static final String DRL_PACKAGE = "com.sky.synome.rules";
 
   private final EngineConfig config;
   private final RuleCompiler compiler;
@@ -97,19 +102,76 @@ public class EngineSession {
   }
 
   public void rebuildFromSnapshot(List<RestorableFact> snapshot) {
+    restoreFromSnapshot(snapshot, 0L, true);
+  }
+
+  public void restoreFromSnapshot(
+      List<RestorableFact> snapshot, long clockMillis, boolean fireRules) {
     if (kieSession != null) {
       kieSession.dispose();
     }
     this.kieSession = createSession();
     this.factRegistry.clear();
 
+    advanceClockTo(clockMillis);
+
     for (RestorableFact fact : snapshot) {
-      FactHandle handle = this.kieSession.insert(fact.factObject());
+      Object factObject =
+          fact.factObject() != null ? fact.factObject() : createFact(fact.factType(), fact.data());
+      FactHandle handle = this.kieSession.insert(factObject);
+      Map<String, Object> dataSnapshot = fact.data() == null ? Map.of() : Map.copyOf(fact.data());
       this.factRegistry.put(
-          fact.factKey(), new FactRegistry.FactEntry(handle, fact.factType(), fact.data()));
+          fact.factKey(), new FactRegistry.FactEntry(handle, fact.factType(), dataSnapshot));
     }
 
-    this.kieSession.fireAllRules();
+    if (fireRules) {
+      this.kieSession.fireAllRules();
+    }
+  }
+
+  public List<RestorableFact> snapshotBaseFacts() {
+    List<RestorableFact> snapshot = new ArrayList<>();
+    for (Map.Entry<String, FactRegistry.FactEntry> entry : factRegistry.entries()) {
+      FactRegistry.FactEntry factEntry = entry.getValue();
+      Object factObject = kieSession.getObject(factEntry.handle());
+      if (factObject == null) {
+        continue;
+      }
+      Map<String, Object> dataSnapshot =
+          factEntry.data() == null ? Map.of() : Map.copyOf(factEntry.data());
+      snapshot.add(
+          new RestorableFact(entry.getKey(), factEntry.factType(), dataSnapshot, factObject));
+    }
+    return snapshot;
+  }
+
+  public long currentClockMillis() {
+    if (!(kieSession.getSessionClock() instanceof SessionPseudoClock clock)) {
+      return 0L;
+    }
+    return clock.getCurrentTime();
+  }
+
+  public Object createFact(String factTypeName, Map<String, Object> data) {
+    FactType factType = kieBase.getFactType(DRL_PACKAGE, factTypeName);
+    if (factType == null) {
+      throw new IllegalStateException("Unknown fact type: " + factTypeName);
+    }
+
+    try {
+      Object instance = factType.newInstance();
+      Map<String, Object> fields = data == null ? Map.of() : data;
+      for (Map.Entry<String, Object> field : fields.entrySet()) {
+        var fieldDef = factType.getField(field.getKey());
+        if (fieldDef != null) {
+          Object value = coerceValue(field.getValue(), fieldDef.getType());
+          factType.set(instance, field.getKey(), value);
+        }
+      }
+      return instance;
+    } catch (InstantiationException | IllegalAccessException e) {
+      throw new IllegalStateException("Failed to create fact of type " + factType.getName(), e);
+    }
   }
 
   private KieSession createSession() {
@@ -118,5 +180,45 @@ public class EngineSession {
     KieSession session = kieBase.newKieSession(sessionConfig, null);
     session.addEventListener(derivationTracker);
     return session;
+  }
+
+  private void advanceClockTo(long clockMillis) {
+    if (!(kieSession.getSessionClock() instanceof SessionPseudoClock clock)) {
+      throw new IllegalStateException("KieSession is not configured with a pseudo clock");
+    }
+    long current = clock.getCurrentTime();
+    if (clockMillis > current) {
+      clock.advanceTime(clockMillis - current, TimeUnit.MILLISECONDS);
+    }
+  }
+
+  private Object coerceValue(Object value, Class<?> targetType) {
+    if (value == null) {
+      return null;
+    }
+    if (targetType.isInstance(value)) {
+      return value;
+    }
+
+    if (targetType == double.class || targetType == Double.class) {
+      if (value instanceof Number n) {
+        return n.doubleValue();
+      }
+    }
+    if (targetType == long.class || targetType == Long.class) {
+      if (value instanceof Number n) {
+        return n.longValue();
+      }
+    }
+    if (targetType == int.class || targetType == Integer.class) {
+      if (value instanceof Number n) {
+        return n.intValue();
+      }
+    }
+    if (targetType == String.class) {
+      return value.toString();
+    }
+
+    return value;
   }
 }

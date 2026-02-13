@@ -12,11 +12,9 @@ import jakarta.inject.Inject;
 import java.time.Instant;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.Map;
 import java.util.UUID;
 import java.util.concurrent.TimeUnit;
 import org.jboss.logging.Logger;
-import org.kie.api.definition.type.FactType;
 import org.kie.api.runtime.KieSession;
 import org.kie.api.runtime.rule.EntryPoint;
 import org.kie.api.runtime.rule.FactHandle;
@@ -26,7 +24,6 @@ import org.kie.api.time.SessionPseudoClock;
 public class ChangesetProcessor {
 
   private static final Logger LOG = Logger.getLogger(ChangesetProcessor.class);
-  private static final String DRL_PACKAGE = "com.sky.synome.rules";
 
   @Inject EngineSession engineSession;
 
@@ -54,59 +51,33 @@ public class ChangesetProcessor {
 
       KieSession session = engineSession.kieSession();
       FactRegistry registry = engineSession.factRegistry();
-      List<EngineSession.RestorableFact> snapshot = snapshotBaseFacts(session, registry);
+      List<EngineSession.RestorableFact> snapshot = engineSession.snapshotBaseFacts();
       long reservationSeq = changesetLog.reserve(changeset);
 
       try {
-        EffectsSummary effects = new EffectsSummary();
-        DerivationTracker tracker = engineSession.derivationTracker();
-        int rulesFired;
-
-        // Start tracking before applying entries to catch TMS retractions
-        // triggered by base fact deletions.
-        tracker.startTracking();
-        try {
-          for (ChangesetEntry entry : changeset.entries()) {
-            applyEntry(entry, session, registry, effects);
-          }
-          rulesFired = session.fireAllRules();
-        } finally {
-          tracker.stopTracking();
-        }
-
-        // Collect derived facts.
-        List<DerivedFactSummary> derivedFacts = new ArrayList<>();
-        for (DerivationTracker.Derivation d : tracker.getDerivations()) {
-          effects.derivedFactsCreated++;
-          derivedFacts.add(
-              new DerivedFactSummary(
-                  UUID.randomUUID().toString(),
-                  d.factType(),
-                  d.ruleName(),
-                  d.factType() + " derived by " + d.ruleName()));
-        }
-        effects.derivedFactsRetracted = tracker.getRetractions().size();
+        ApplyResult applyResult = applyEntriesAndFire(changeset, session, registry);
 
         long durationMs = System.currentTimeMillis() - start;
 
         var response = new ChangesetResponse();
         response.changesetId = changeset.id();
         response.status = "APPLIED";
-        response.rulesFired = rulesFired;
+        response.rulesFired = applyResult.rulesFired();
         response.durationMs = durationMs;
-        response.effects = effects;
-        response.newDerivedFacts = derivedFacts;
+        response.effects = applyResult.effects();
+        response.newDerivedFacts = applyResult.derivedFacts();
 
-        changesetLog.finalizeSuccess(reservationSeq, rulesFired, durationMs, response);
+        changesetLog.finalizeSuccess(
+            reservationSeq, applyResult.rulesFired(), durationMs, response);
         response.sequenceNum = reservationSeq;
 
         LOG.infof(
             "Changeset %s applied: seq=%d, rulesFired=%d, derived=%d, retracted=%d, duration=%dms",
             changeset.id(),
             reservationSeq,
-            rulesFired,
-            effects.derivedFactsCreated,
-            effects.derivedFactsRetracted,
+            applyResult.rulesFired(),
+            applyResult.effects().derivedFactsCreated,
+            applyResult.effects().derivedFactsRetracted,
             durationMs);
         return response;
       } catch (RuntimeException e) {
@@ -117,6 +88,13 @@ public class ChangesetProcessor {
     } finally {
       lock.release();
     }
+  }
+
+  public void replay(Changeset changeset) {
+    validator.validate(changeset);
+    KieSession session = engineSession.kieSession();
+    FactRegistry registry = engineSession.factRegistry();
+    applyEntriesAndFire(changeset, session, registry);
   }
 
   private ChangesetResponse preflightDuplicate(Changeset changeset) {
@@ -137,24 +115,6 @@ public class ChangesetProcessor {
         "Changeset %s replayed from changeset_log with sequence=%d",
         changeset.id(), lookup.responsePayload().sequenceNum);
     return lookup.responsePayload();
-  }
-
-  private List<EngineSession.RestorableFact> snapshotBaseFacts(
-      KieSession session, FactRegistry registry) {
-    List<EngineSession.RestorableFact> snapshot = new ArrayList<>();
-    for (Map.Entry<String, FactRegistry.FactEntry> entry : registry.entries()) {
-      FactRegistry.FactEntry factEntry = entry.getValue();
-      Object factObject = session.getObject(factEntry.handle());
-      if (factObject == null) {
-        continue;
-      }
-      Map<String, Object> dataSnapshot =
-          factEntry.data() == null ? Map.of() : Map.copyOf(factEntry.data());
-      snapshot.add(
-          new EngineSession.RestorableFact(
-              entry.getKey(), factEntry.factType(), dataSnapshot, factObject));
-    }
-    return snapshot;
   }
 
   private void rollbackAtomicFailure(
@@ -181,6 +141,38 @@ public class ChangesetProcessor {
     }
   }
 
+  private ApplyResult applyEntriesAndFire(
+      Changeset changeset, KieSession session, FactRegistry registry) {
+    EffectsSummary effects = new EffectsSummary();
+    DerivationTracker tracker = engineSession.derivationTracker();
+    int rulesFired;
+
+    // Start tracking before applying entries to catch TMS retractions
+    // triggered by base fact deletions.
+    tracker.startTracking();
+    try {
+      for (ChangesetEntry entry : changeset.entries()) {
+        applyEntry(entry, session, registry, effects);
+      }
+      rulesFired = session.fireAllRules();
+    } finally {
+      tracker.stopTracking();
+    }
+
+    List<DerivedFactSummary> derivedFacts = new ArrayList<>();
+    for (DerivationTracker.Derivation derivation : tracker.getDerivations()) {
+      effects.derivedFactsCreated++;
+      derivedFacts.add(
+          new DerivedFactSummary(
+              UUID.randomUUID().toString(),
+              derivation.factType(),
+              derivation.ruleName(),
+              derivation.factType() + " derived by " + derivation.ruleName()));
+    }
+    effects.derivedFactsRetracted = tracker.getRetractions().size();
+    return new ApplyResult(rulesFired, effects, derivedFacts);
+  }
+
   private void applyEntry(
       ChangesetEntry entry, KieSession session, FactRegistry registry, EffectsSummary effects) {
     switch (entry.kind()) {
@@ -202,8 +194,7 @@ public class ChangesetProcessor {
 
   private void applyUpsert(
       ChangesetEntry entry, KieSession session, FactRegistry registry, EffectsSummary effects) {
-    FactType factType = engineSession.kieBase().getFactType(DRL_PACKAGE, entry.factType());
-    Object fact = createFact(factType, entry.data());
+    Object fact = engineSession.createFact(entry.factType(), entry.data());
 
     FactRegistry.FactEntry existing = registry.get(entry.factKey());
     if (existing != null) {
@@ -234,8 +225,7 @@ public class ChangesetProcessor {
   }
 
   private void applyEmit(ChangesetEntry entry, KieSession session, EffectsSummary effects) {
-    FactType factType = engineSession.kieBase().getFactType(DRL_PACKAGE, entry.factType());
-    Object event = createFact(factType, entry.data());
+    Object event = engineSession.createFact(entry.factType(), entry.data());
 
     advanceClockForEvent(session, entry.timestamp());
     EntryPoint entryPoint = session.getEntryPoint(entry.entryPoint());
@@ -257,52 +247,8 @@ public class ChangesetProcessor {
     }
   }
 
-  private Object createFact(FactType factType, Map<String, Object> data) {
-    try {
-      Object instance = factType.newInstance();
-      for (Map.Entry<String, Object> field : data.entrySet()) {
-        var fieldDef = factType.getField(field.getKey());
-        if (fieldDef != null) {
-          Object value = coerceValue(field.getValue(), fieldDef.getType());
-          factType.set(instance, field.getKey(), value);
-        }
-      }
-      return instance;
-    } catch (InstantiationException | IllegalAccessException e) {
-      throw new IllegalStateException("Failed to create fact of type " + factType.getName(), e);
-    }
-  }
-
-  private Object coerceValue(Object value, Class<?> targetType) {
-    if (value == null) {
-      return null;
-    }
-    if (targetType.isInstance(value)) {
-      return value;
-    }
-
-    // Handle numeric coercion from JSON (Jackson may parse numbers as Integer/Long)
-    if (targetType == double.class || targetType == Double.class) {
-      if (value instanceof Number n) {
-        return n.doubleValue();
-      }
-    }
-    if (targetType == long.class || targetType == Long.class) {
-      if (value instanceof Number n) {
-        return n.longValue();
-      }
-    }
-    if (targetType == int.class || targetType == Integer.class) {
-      if (value instanceof Number n) {
-        return n.intValue();
-      }
-    }
-    if (targetType == String.class) {
-      return value.toString();
-    }
-
-    return value;
-  }
+  private record ApplyResult(
+      int rulesFired, EffectsSummary effects, List<DerivedFactSummary> derivedFacts) {}
 
   public static class LockTimeoutException extends RuntimeException {
     public LockTimeoutException(String message) {

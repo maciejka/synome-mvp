@@ -6,6 +6,8 @@ spotless = "7.0.2"
 spotbugs-plugin = "6.1.7"
 testcontainers = "1.21.2"
 dependency-check-plugin = "10.0.4"
+lz4 = "1.8.0"
+jackson-msgpack = "0.9.8"
 
 [libraries]
 quarkus-bom = { module = "io.quarkus.platform:quarkus-bom", version.ref = "quarkus" }
@@ -23,6 +25,9 @@ drools-mvel = { module = "org.drools:drools-mvel", version.ref = "drools" }
 quarkus-junit5 = { module = "io.quarkus:quarkus-junit5" }
 rest-assured = { module = "io.rest-assured:rest-assured" }
 testcontainers-postgresql = { module = "org.testcontainers:postgresql", version.ref = "testcontainers" }
+lz4-java = { module = "org.lz4:lz4-java", version.ref = "lz4" }
+jackson-dataformat-msgpack = { module = "org.msgpack:jackson-dataformat-msgpack", version.ref = "jackson-msgpack" }
+quarkus-scheduler = { module = "io.quarkus:quarkus-scheduler" }
 
 [plugins]
 quarkus = { id = "io.quarkus", version.ref = "quarkus" }

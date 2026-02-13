@@ -18,4 +18,24 @@ public interface EngineConfig {
   @WithName("lock-timeout-ms")
   @WithDefault("5000")
   long lockTimeoutMs();
+
+  @WithName("checkpoint-enabled")
+  @WithDefault("true")
+  boolean checkpointEnabled();
+
+  @WithName("checkpoint-scheduler-enabled")
+  @WithDefault("true")
+  boolean checkpointSchedulerEnabled();
+
+  @WithName("checkpoint-interval")
+  @WithDefault("10m")
+  String checkpointInterval();
+
+  @WithName("checkpoint-retain-count")
+  @WithDefault("20")
+  int checkpointRetainCount();
+
+  @WithName("recovery-enabled")
+  @WithDefault("true")
+  boolean recoveryEnabled();
 }

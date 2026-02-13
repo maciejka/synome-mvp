@@ -122,6 +122,31 @@ class EngineSessionUnitTest {
       public long lockTimeoutMs() {
         return 5000;
       }
+
+      @Override
+      public boolean checkpointEnabled() {
+        return true;
+      }
+
+      @Override
+      public boolean checkpointSchedulerEnabled() {
+        return true;
+      }
+
+      @Override
+      public String checkpointInterval() {
+        return "10m";
+      }
+
+      @Override
+      public int checkpointRetainCount() {
+        return 20;
+      }
+
+      @Override
+      public boolean recoveryEnabled() {
+        return true;
+      }
     };
   }
 }

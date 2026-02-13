@@ -4,6 +4,8 @@ import com.sky.synome.api.dto.ErrorResponse;
 import com.sky.synome.changeset.ChangesetProcessor;
 import com.sky.synome.changeset.ChangesetValidator;
 import com.sky.synome.changeset.DuplicatePayloadMismatchException;
+import com.sky.synome.checkpoint.CheckpointException;
+import com.sky.synome.checkpoint.CheckpointNotFoundException;
 import jakarta.ws.rs.core.Response;
 import jakarta.ws.rs.ext.ExceptionMapper;
 import jakarta.ws.rs.ext.Provider;
@@ -54,6 +56,22 @@ public class ErrorMapper implements ExceptionMapper<Exception> {
                   Map.of("changesetId", dpe.changesetId()),
                   Instant.now(),
                   requestId))
+          .build();
+    }
+
+    if (exception instanceof CheckpointNotFoundException cnf) {
+      return Response.status(Response.Status.NOT_FOUND)
+          .entity(
+              new ErrorResponse(
+                  "CHECKPOINT_NOT_FOUND", cnf.getMessage(), Map.of(), Instant.now(), requestId))
+          .build();
+    }
+
+    if (exception instanceof CheckpointException ce) {
+      return Response.status(Response.Status.BAD_REQUEST)
+          .entity(
+              new ErrorResponse(
+                  "CHECKPOINT_ERROR", ce.getMessage(), Map.of(), Instant.now(), requestId))
           .build();
     }
 

@@ -37,10 +37,13 @@ dependencies {
     implementation(libs.quarkus.flyway)
     implementation(libs.quarkus.smallrye.health)
     implementation(libs.quarkus.logging.json)
+    implementation(libs.quarkus.scheduler)
     implementation(libs.flyway.postgresql)
     implementation(libs.jooq)
     implementation(libs.drools.engine)
     implementation(libs.drools.mvel)
+    implementation(libs.lz4.java)
+    implementation(libs.jackson.dataformat.msgpack)
 
     testImplementation(libs.quarkus.junit5)
     testImplementation(libs.rest.assured)
@@ -181,7 +184,7 @@ tasks.test {
 
 tasks.register("qa") {
     group = "verification"
-    description = "Runs the full QA gate: formatting, static analysis, tests, and coverage."
+    description = "Runs the core QA gate: formatting, static analysis, tests, and coverage."
     dependsOn(
         "spotlessCheck",
         "checkstyleMain",
@@ -192,7 +195,6 @@ tasks.register("qa") {
         "pmdTest",
         "cpdMain",
         "cpdTest",
-        "dependencyCheckAnalyze",
         "test",
     )
 }

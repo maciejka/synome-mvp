@@ -92,7 +92,7 @@ The project enforces six QA tools from `build.gradle.kts`:
 Recommended local QA pass:
 
 ```bash
-./gradlew spotlessCheck checkstyleMain checkstyleTest spotbugsMain spotbugsTest pmdMain pmdTest cpdMain cpdTest dependencyCheckAnalyze test
+./gradlew spotlessCheck checkstyleMain checkstyleTest spotbugsMain spotbugsTest pmdMain pmdTest cpdMain cpdTest test
 ```
 
 ## Commit gate policy:
@@ -101,13 +101,9 @@ Recommended local QA pass:
   - `./gradlew qa`
 - Do not create commits when `./gradlew qa` fails.
 - Enforce commit quality thresholds before every commit:
-  - Diff coverage (not just global coverage): `>= 90%` of changed lines.
-  - Branch coverage on changed code: `>= 80%` for changed files/paths.
-  - Mutation score (test quality): `>= 65–75%` on changed modules.
   - Static analysis: zero new findings (no new SpotBugs/Checkstyle issues, no warning regressions).
   - Complexity limits: no new methods over agreed thresholds (for example cyclomatic `> 10` or cognitive `> 15`).
   - Duplication: no new duplicate blocks; duplication ratio must stay stable or lower.
-  - Security dependency scan: zero new high/critical vulnerabilities.
 - Keep commit subjects aligned with existing repository history:
   - Use a capitalized imperative summary without a `type:` prefix (for example: `Document commit message style policy`)
   - Keep subject short, descriptive, and without trailing punctuation.

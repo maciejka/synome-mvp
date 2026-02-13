@@ -13,6 +13,7 @@ import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
 import java.time.OffsetDateTime;
 import java.util.HexFormat;
+import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
 import org.jooq.DSLContext;
@@ -82,6 +83,38 @@ public class ChangesetLog {
     LoggedChangeset logged = existing.get();
     boolean checksumMatches = logged.checksum().equals(sha256(serializePayload(changeset)));
     return Optional.of(new ReplayLookup(checksumMatches, logged.responsePayload()));
+  }
+
+  public Optional<Long> latestFinalizedSequence() {
+    Long sequence =
+        dsl.select(SEQUENCE_NUM_FIELD)
+            .from(CHANGESET_LOG_TABLE)
+            .where(RESPONSE_PAYLOAD_FIELD.isNotNull())
+            .and(ERROR_FIELD.isNull())
+            .orderBy(SEQUENCE_NUM_FIELD.desc())
+            .limit(1)
+            .fetchOne(SEQUENCE_NUM_FIELD);
+    return Optional.ofNullable(sequence);
+  }
+
+  public List<ReplayableLoggedChangeset> listFinalizedAfter(long sequenceBoundaryExclusive) {
+    return dsl.select(SEQUENCE_NUM_FIELD, PAYLOAD_FIELD)
+        .from(CHANGESET_LOG_TABLE)
+        .where(SEQUENCE_NUM_FIELD.gt(sequenceBoundaryExclusive))
+        .and(RESPONSE_PAYLOAD_FIELD.isNotNull())
+        .and(ERROR_FIELD.isNull())
+        .orderBy(SEQUENCE_NUM_FIELD.asc())
+        .fetch(
+            record ->
+                new ReplayableLoggedChangeset(
+                    record.get(SEQUENCE_NUM_FIELD), deserializePayload(record.get(PAYLOAD_FIELD))));
+  }
+
+  public int deleteUnfinalizedReservations() {
+    return dsl.deleteFrom(CHANGESET_LOG_TABLE)
+        .where(RESPONSE_PAYLOAD_FIELD.isNull())
+        .and(ERROR_FIELD.isNull())
+        .execute();
   }
 
   public long reserve(Changeset changeset) {
@@ -179,6 +212,14 @@ public class ChangesetLog {
     }
   }
 
+  private Changeset deserializePayload(JSONB payload) {
+    try {
+      return objectMapper.readValue(payload.data(), Changeset.class);
+    } catch (JsonProcessingException e) {
+      throw new IllegalStateException("Failed to deserialize changeset payload", e);
+    }
+  }
+
   private String serializeResponse(ChangesetResponse response) {
     try {
       return objectMapper.writeValueAsString(response);
@@ -209,4 +250,6 @@ public class ChangesetLog {
       UUID changesetId, long sequenceNum, String checksum, ChangesetResponse responsePayload) {}
 
   public record ReplayLookup(boolean checksumMatches, ChangesetResponse responsePayload) {}
+
+  public record ReplayableLoggedChangeset(long sequenceNum, Changeset changeset) {}
 }

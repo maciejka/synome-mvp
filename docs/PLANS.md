@@ -34,7 +34,7 @@ This file is the source of truth for current implementation status and delivery 
 ### Remaining gaps for next milestones
 
 1. `fireUntilHalt()` is still not part of the active write-path runtime.
-2. Recovery/checkpoint, CEP replay window, and provenance phases remain unimplemented.
+2. Recovery/checkpoint runtime (beyond DB schema), CEP replay window, and provenance phases remain unimplemented.
 
 ## Milestones
 
@@ -58,18 +58,30 @@ Exit criteria:
 - API docs/examples match runtime validation behavior.
 
 ### M2: Checkpoints and Recovery (Phase 2)
-Status: PLANNED
+Status: PARTIAL (core runtime and API implemented; hardening and full QA gate still pending)
 
-- [ ] Fact serializer (MessagePack + LZ4).
-- [ ] Checkpoint store (read/write).
-- [ ] Recovery bootstrap sequence.
-- [ ] Changeset replay after checkpoint.
-- [ ] Checkpoint API endpoints.
-- [ ] Round-trip and crash recovery integration tests.
+Goal: deterministic restart from latest checkpoint plus ordered replay, without manual repair.
+Detailed execution plan: `docs/M2_EXECUTION_PLAN.md`.
+
+- [x] Checkpoint schema groundwork exists (`V002__checkpoints.sql`).
+- [x] Define checkpoint domain contract (payload schema version + metadata contract + consistency validation).
+- [x] Fact serializer/deserializer (MessagePack + LZ4) for base facts and fact registry payloads.
+- [x] Checkpoint store (write, latest-read, point-read, retention pruning hook).
+- [x] Recovery bootstrap sequence integrated into startup path.
+- [x] Changeset replay after checkpoint (`sequence_num > checkpoint.sequence_num`, strict ordering).
+- [x] Recovery-safe apply path (replay mode that does not re-log already finalized changesets).
+- [x] Checkpoint trigger strategy (manual endpoint plus configurable periodic checkpointing).
+- [x] Checkpoint API endpoints (create/list/get/latest/by-id).
+- [ ] Recovery observability (add explicit metrics; logs are in place).
+- [x] Round-trip, deterministic restart, and crash-recovery integration tests.
 
 Exit criteria:
 
-- Restarted engine converges to same logical state.
+- Restarted engine converges to same logical state as uninterrupted execution for the same changeset stream.
+- Recovery replays only finalized rows and only rows after the checkpoint sequence boundary.
+- Checkpoint payload excludes events and derived facts; those are replayed/re-derived correctly.
+- Corrupt/incompatible checkpoint payload fails fast with explicit diagnostics.
+- Idempotency contract remains intact after restart (duplicate same payload replays stored response, mismatch returns `409`).
 
 ### M3: CEP Runtime (Phase 3)
 Status: PLANNED
