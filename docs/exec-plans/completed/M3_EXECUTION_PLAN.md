@@ -221,9 +221,9 @@ Likely updated files:
 
 ## 10. Exit Checklist
 
-- [ ] Replay-window policy implemented and documented.
-- [ ] Event projection store and replay service merged.
-- [ ] Recovery uses window-aware event replay.
-- [ ] Event APIs and contract tests merged.
-- [ ] CEP determinism suite green.
-- [ ] `docs/PLANS.md` M3 moved to `DONE`.
+- [x] Replay-window policy implemented and documented.
+- [x] Event projection store and replay service merged.
+- [x] Recovery uses window-aware event replay.
+- [x] Event APIs and contract tests merged.
+- [x] CEP determinism suite green.
+- [x] `docs/PLANS.md` M3 moved to `DONE`.

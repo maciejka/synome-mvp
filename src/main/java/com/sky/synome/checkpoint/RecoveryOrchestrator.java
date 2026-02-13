@@ -2,6 +2,7 @@ package com.sky.synome.checkpoint;
 
 import com.sky.synome.changeset.ChangesetLog;
 import com.sky.synome.changeset.ChangesetReplayService;
+import com.sky.synome.changeset.EventReplayService;
 import com.sky.synome.config.EngineConfig;
 import com.sky.synome.core.EngineSession;
 import jakarta.enterprise.context.ApplicationScoped;
@@ -20,18 +21,21 @@ public class RecoveryOrchestrator {
 
   @Inject ChangesetReplayService changesetReplayService;
 
+  @Inject EventReplayService eventReplayService;
+
   @Inject ChangesetLog changesetLog;
 
   public RecoveryResult recover(EngineSession engineSession) {
     String checkpointIdForLogs = "none";
     long checkpointSequenceForLogs = 0L;
     int replayedChangesetsForLogs = 0;
+    int replayedEventsForLogs = 0;
     int convergenceRulesForLogs = 0;
     String phase = "disabled";
     long start = System.currentTimeMillis();
 
     if (!engineConfig.recoveryEnabled()) {
-      return new RecoveryResult(false, 0, 0, 0);
+      return new RecoveryResult(false, 0, 0, 0, 0);
     }
 
     var lock = engineSession.sessionLock();
@@ -40,10 +44,12 @@ public class RecoveryOrchestrator {
       long durationMs = System.currentTimeMillis() - start;
       LOG.errorf(
           "recovery.lifecycle event=recovery.failure checkpointId=%s checkpointSequence=%d "
-              + "replayedChangesets=%d convergenceRules=%d durationMs=%d phase=%s errorType=%s",
+              + "replayedChangesets=%d replayedEvents=%d convergenceRules=%d "
+              + "durationMs=%d phase=%s errorType=%s",
           checkpointIdForLogs,
           checkpointSequenceForLogs,
           replayedChangesetsForLogs,
+          replayedEventsForLogs,
           convergenceRulesForLogs,
           durationMs,
           phase,
@@ -63,10 +69,11 @@ public class RecoveryOrchestrator {
 
     LOG.infof(
         "recovery.lifecycle event=recovery.start checkpointId=%s checkpointSequence=%d "
-            + "replayedChangesets=%d convergenceRules=%d durationMs=%d phase=%s",
+            + "replayedChangesets=%d replayedEvents=%d convergenceRules=%d durationMs=%d phase=%s",
         checkpointIdForLogs,
         checkpointSequenceForLogs,
         replayedChangesetsForLogs,
+        replayedEventsForLogs,
         convergenceRulesForLogs,
         0,
         phase);
@@ -79,11 +86,13 @@ public class RecoveryOrchestrator {
       if (removedReservations > 0) {
         LOG.infof(
             "recovery.lifecycle event=recovery.cleanup checkpointId=%s checkpointSequence=%d "
-                + "replayedChangesets=%d convergenceRules=%d durationMs=%d phase=%s "
+                + "replayedChangesets=%d replayedEvents=%d convergenceRules=%d "
+                + "durationMs=%d phase=%s "
                 + "removedReservations=%d",
             checkpointIdForLogs,
             checkpointSequenceForLogs,
             replayedChangesetsForLogs,
+            replayedEventsForLogs,
             convergenceRulesForLogs,
             System.currentTimeMillis() - start,
             phase,
@@ -97,14 +106,16 @@ public class RecoveryOrchestrator {
         LOG.infof(
             "recovery.lifecycle event=recovery.skip_no_checkpoint "
                 + "checkpointId=%s checkpointSequence=%d "
-                + "replayedChangesets=%d convergenceRules=%d durationMs=%d phase=%s",
+                + "replayedChangesets=%d replayedEvents=%d convergenceRules=%d "
+                + "durationMs=%d phase=%s",
             checkpointIdForLogs,
             checkpointSequenceForLogs,
             replayedChangesetsForLogs,
+            replayedEventsForLogs,
             convergenceRulesForLogs,
             durationMs,
             phase);
-        return new RecoveryResult(false, 0, 0, 0);
+        return new RecoveryResult(false, 0, 0, 0, 0);
       }
 
       snapshot = latest.get();
@@ -114,22 +125,30 @@ public class RecoveryOrchestrator {
       engineSession.restoreFromSnapshot(snapshot.facts(), snapshot.clockMillis(), false);
       snapshotRestored = true;
 
-      phase = "replay_tail";
+      phase = "replay_tail_facts";
       replayedChangesetsForLogs = changesetReplayService.replayAfter(snapshot.sequenceNum());
+      phase = "replay_window_events";
+      replayedEventsForLogs = eventReplayService.replayWindowEvents(snapshot.clockMillis());
       phase = "converge";
       convergenceRulesForLogs = engineSession.kieSession().fireAllRules();
       long durationMs = System.currentTimeMillis() - start;
 
       LOG.infof(
           "recovery.lifecycle event=recovery.success checkpointId=%s checkpointSequence=%d "
-              + "replayedChangesets=%d convergenceRules=%d durationMs=%d phase=completed",
+              + "replayedChangesets=%d replayedEvents=%d convergenceRules=%d "
+              + "durationMs=%d phase=completed",
           checkpointIdForLogs,
           checkpointSequenceForLogs,
           replayedChangesetsForLogs,
+          replayedEventsForLogs,
           convergenceRulesForLogs,
           durationMs);
       return new RecoveryResult(
-          true, snapshot.sequenceNum(), replayedChangesetsForLogs, convergenceRulesForLogs);
+          true,
+          snapshot.sequenceNum(),
+          replayedChangesetsForLogs,
+          replayedEventsForLogs,
+          convergenceRulesForLogs);
     } catch (RuntimeException e) {
       if (snapshotRestored && snapshot != null && shouldRestoreCheckpoint(phase)) {
         try {
@@ -143,10 +162,12 @@ public class RecoveryOrchestrator {
       LOG.errorf(
           e,
           "recovery.lifecycle event=recovery.failure checkpointId=%s checkpointSequence=%d "
-              + "replayedChangesets=%d convergenceRules=%d durationMs=%d phase=%s errorType=%s",
+              + "replayedChangesets=%d replayedEvents=%d convergenceRules=%d "
+              + "durationMs=%d phase=%s errorType=%s",
           checkpointIdForLogs,
           checkpointSequenceForLogs,
           replayedChangesetsForLogs,
+          replayedEventsForLogs,
           convergenceRulesForLogs,
           durationMs,
           phase,
@@ -176,12 +197,15 @@ public class RecoveryOrchestrator {
   }
 
   private boolean shouldRestoreCheckpoint(String phase) {
-    return "replay_tail".equals(phase) || "converge".equals(phase);
+    return "replay_tail_facts".equals(phase)
+        || "replay_window_events".equals(phase)
+        || "converge".equals(phase);
   }
 
   public record RecoveryResult(
       boolean recoveredFromCheckpoint,
       long checkpointSequenceNum,
       int replayedChangesets,
+      int replayedEvents,
       int convergenceRulesFired) {}
 }

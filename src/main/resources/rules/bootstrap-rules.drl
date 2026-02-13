@@ -23,9 +23,16 @@ end
 
 declare Transaction
     @role( event )
+    @timestamp( eventTimestamp )
     txId       : String
     customerId : String
     amount     : double
+    eventTimestamp : long
+end
+
+declare RecentLargeTransaction
+    txId       : String
+    customerId : String
 end
 
 rule "Premium customer with high-value account"
@@ -46,4 +53,14 @@ rule "Observe transaction events"
         $tx : Transaction() from entry-point "transactions"
     then
         // Keep transaction entry point active for EVENT/EMIT contract.
+end
+
+rule "Track recent large transaction"
+    when
+        $tx : Transaction( amount > 1000 ) over window:time( 30m ) from entry-point "transactions"
+    then
+        RecentLargeTransaction alert = new RecentLargeTransaction();
+        alert.setTxId($tx.getTxId());
+        alert.setCustomerId($tx.getCustomerId());
+        insertLogical(alert);
 end

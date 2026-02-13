@@ -1,10 +1,13 @@
 package com.sky.synome.changeset;
 
+import com.sky.synome.config.EngineConfig;
 import com.sky.synome.core.EngineSession;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.List;
+import java.util.Set;
 
 @ApplicationScoped
 public class ChangesetValidator {
@@ -12,6 +15,8 @@ public class ChangesetValidator {
   private static final String DRL_PACKAGE = "com.sky.synome.rules";
 
   @Inject EngineSession engineSession;
+
+  @Inject EngineConfig engineConfig;
 
   public void validate(Changeset changeset) {
     List<String> errors = new ArrayList<>();
@@ -76,6 +81,7 @@ public class ChangesetValidator {
     }
 
     validateRequiredText(entry.entryPoint(), "entryPoint", prefix, errors);
+    validateAllowedEntrypoint(entry.entryPoint(), prefix, errors);
     validateRequiredFactType(entry.factType(), prefix, errors);
     if (entry.timestamp() == null) {
       errors.add(prefix + "timestamp is required for EVENT/EMIT");
@@ -117,6 +123,27 @@ public class ChangesetValidator {
     if (data == null || data.isEmpty()) {
       errors.add(prefix + "data is required");
     }
+  }
+
+  private void validateAllowedEntrypoint(String entryPoint, String prefix, List<String> errors) {
+    Set<String> allowedEntrypoints = configuredEntrypoints();
+    if (allowedEntrypoints.isEmpty()) {
+      return;
+    }
+    if (entryPoint == null || !allowedEntrypoints.contains(entryPoint)) {
+      errors.add(prefix + "entryPoint is not enabled by engine.event-entrypoints");
+    }
+  }
+
+  private Set<String> configuredEntrypoints() {
+    String configured = engineConfig.eventEntrypoints();
+    if (configured == null || configured.isBlank()) {
+      return Set.of();
+    }
+    return Arrays.stream(configured.split(","))
+        .map(String::trim)
+        .filter(value -> !value.isBlank())
+        .collect(java.util.stream.Collectors.toSet());
   }
 
   public static class ValidationException extends RuntimeException {

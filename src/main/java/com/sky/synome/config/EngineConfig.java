@@ -3,6 +3,7 @@ package com.sky.synome.config;
 import io.smallrye.config.ConfigMapping;
 import io.smallrye.config.WithDefault;
 import io.smallrye.config.WithName;
+import java.time.Duration;
 
 @ConfigMapping(prefix = "engine")
 public interface EngineConfig {
@@ -38,4 +39,16 @@ public interface EngineConfig {
   @WithName("recovery-enabled")
   @WithDefault("true")
   boolean recoveryEnabled();
+
+  @WithName("event-replay-enabled")
+  @WithDefault("true")
+  boolean eventReplayEnabled();
+
+  @WithName("event-replay-window")
+  @WithDefault("30m")
+  Duration eventReplayWindow();
+
+  @WithName("event-entrypoints")
+  @WithDefault("transactions")
+  String eventEntrypoints();
 }

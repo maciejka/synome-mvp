@@ -151,6 +151,7 @@ A changeset is all-or-nothing.
 ### PostgreSQL tables
 
 - `changeset_log`: ordered source of truth for finalized (applied) changesets, with reservation records for in-flight/failed attempts.
+- `changeset_events`: projected event index for replay-window recovery and diagnostics.
 - `checkpoints`: serialized base-fact snapshots and engine metadata.
 - `fact_provenance`, `fact_modifications`: provenance records and history.
 - `rule_versions`: uploaded and active/inactive DRL versions.
@@ -198,6 +199,10 @@ Target invariant: recovered state equals pre-shutdown logical state.
 - Replay window is derived from max of event expiration and temporal windows.
 - During replay, pseudo clock advances to event timestamps.
 - After replay, engine transitions to real-time mode.
+- Replay controls are config-driven:
+  - `engine.event-replay-enabled`
+  - `engine.event-replay-window`
+  - `engine.event-entrypoints`
 
 ## 9. Provenance and Explainability
 
@@ -234,6 +239,8 @@ Rollback source of truth is pre-swap checkpoint.
 - `GET /api/v1/facts/{factKey}`
 - `GET /api/v1/facts/types`
 - `GET /api/v1/facts/stats`
+- `GET /api/v1/events`
+- `GET /api/v1/events/{changesetId}`
 
 ### Advanced
 

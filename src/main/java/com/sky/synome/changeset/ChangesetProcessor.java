@@ -5,20 +5,22 @@ import com.sky.synome.api.dto.DerivedFactSummary;
 import com.sky.synome.api.dto.EffectsSummary;
 import com.sky.synome.config.EngineConfig;
 import com.sky.synome.core.DerivationTracker;
+import com.sky.synome.core.EngineClockManager;
+import com.sky.synome.core.EngineClockManager.ClockMode;
 import com.sky.synome.core.EngineSession;
 import com.sky.synome.core.FactRegistry;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
-import java.time.Instant;
 import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Set;
 import java.util.UUID;
-import java.util.concurrent.TimeUnit;
 import org.jboss.logging.Logger;
 import org.kie.api.runtime.KieSession;
 import org.kie.api.runtime.rule.EntryPoint;
 import org.kie.api.runtime.rule.FactHandle;
-import org.kie.api.time.SessionPseudoClock;
 
 @ApplicationScoped
 public class ChangesetProcessor {
@@ -32,6 +34,10 @@ public class ChangesetProcessor {
   @Inject ChangesetValidator validator;
 
   @Inject ChangesetLog changesetLog;
+
+  @Inject ChangesetEventStore changesetEventStore;
+
+  @Inject EngineClockManager engineClockManager;
 
   public ChangesetResponse process(Changeset changeset) {
     long start = System.currentTimeMillis();
@@ -55,7 +61,7 @@ public class ChangesetProcessor {
       long reservationSeq = changesetLog.reserve(changeset);
 
       try {
-        ApplyResult applyResult = applyEntriesAndFire(changeset, session, registry);
+        ApplyResult applyResult = applyEntriesAndFire(changeset, session, registry, ClockMode.LIVE);
 
         long durationMs = System.currentTimeMillis() - start;
 
@@ -69,6 +75,8 @@ public class ChangesetProcessor {
 
         changesetLog.finalizeSuccess(
             reservationSeq, applyResult.rulesFired(), durationMs, response);
+        changesetEventStore.persistProjectedEvents(
+            changeset.id(), reservationSeq, changeset.entries());
         response.sequenceNum = reservationSeq;
 
         LOG.infof(
@@ -94,7 +102,7 @@ public class ChangesetProcessor {
     validator.validate(changeset);
     KieSession session = engineSession.kieSession();
     FactRegistry registry = engineSession.factRegistry();
-    applyEntriesAndFire(changeset, session, registry);
+    applyEntriesAndFire(changeset, session, registry, ClockMode.REPLAY);
   }
 
   private ChangesetResponse preflightDuplicate(Changeset changeset) {
@@ -138,12 +146,19 @@ public class ChangesetProcessor {
     } catch (RuntimeException cancelFailure) {
       cause.addSuppressed(cancelFailure);
     }
+
+    try {
+      changesetEventStore.deleteBySequence(reservationSeq);
+    } catch (RuntimeException projectionRollbackFailure) {
+      cause.addSuppressed(projectionRollbackFailure);
+    }
   }
 
   private ApplyResult applyEntriesAndFire(
-      Changeset changeset, KieSession session, FactRegistry registry) {
+      Changeset changeset, KieSession session, FactRegistry registry, ClockMode clockMode) {
     EffectsSummary effects = new EffectsSummary();
     DerivationTracker tracker = engineSession.derivationTracker();
+    Set<String> allowedEntrypoints = configuredEventEntrypoints();
     int rulesFired;
 
     // Start tracking before applying entries to catch TMS retractions
@@ -151,7 +166,7 @@ public class ChangesetProcessor {
     tracker.startTracking();
     try {
       for (ChangesetEntry entry : changeset.entries()) {
-        applyEntry(entry, session, registry, effects);
+        applyEntry(entry, session, registry, effects, clockMode, allowedEntrypoints);
       }
       rulesFired = session.fireAllRules();
     } finally {
@@ -173,7 +188,12 @@ public class ChangesetProcessor {
   }
 
   private void applyEntry(
-      ChangesetEntry entry, KieSession session, FactRegistry registry, EffectsSummary effects) {
+      ChangesetEntry entry,
+      KieSession session,
+      FactRegistry registry,
+      EffectsSummary effects,
+      ClockMode clockMode,
+      Set<String> allowedEntrypoints) {
     switch (entry.kind()) {
       case FACT -> {
         switch (entry.action()) {
@@ -186,7 +206,7 @@ public class ChangesetProcessor {
         if (entry.action() != ChangesetAction.EMIT) {
           throw new IllegalStateException("Unsupported EVENT action: " + entry.action());
         }
-        applyEmit(entry, session, effects);
+        applyEmit(entry, session, effects, clockMode, allowedEntrypoints);
       }
     }
   }
@@ -223,10 +243,19 @@ public class ChangesetProcessor {
     }
   }
 
-  private void applyEmit(ChangesetEntry entry, KieSession session, EffectsSummary effects) {
-    Object event = engineSession.createFact(entry.factType(), entry.data());
+  private void applyEmit(
+      ChangesetEntry entry,
+      KieSession session,
+      EffectsSummary effects,
+      ClockMode clockMode,
+      Set<String> allowedEntrypoints) {
+    if (!allowedEntrypoints.isEmpty() && !allowedEntrypoints.contains(entry.entryPoint())) {
+      throw new IllegalStateException("entryPoint is not enabled by engine.event-entrypoints");
+    }
 
-    advanceClockForEvent(session, entry.timestamp());
+    Object event = engineSession.createFact(entry.factType(), withEventTimestamp(entry));
+
+    engineClockManager.advanceToEventTime(session, entry.timestamp(), clockMode);
     EntryPoint entryPoint = session.getEntryPoint(entry.entryPoint());
     if (entryPoint == null) {
       throw new IllegalStateException("Unknown entryPoint: " + entry.entryPoint());
@@ -235,15 +264,24 @@ public class ChangesetProcessor {
     effects.eventsEmitted++;
   }
 
-  private void advanceClockForEvent(KieSession session, Instant eventTimestamp) {
-    if (!(session.getSessionClock() instanceof SessionPseudoClock clock)) {
-      throw new IllegalStateException("KieSession is not configured with a pseudo clock");
+  private Set<String> configuredEventEntrypoints() {
+    String configured = engineConfig.eventEntrypoints();
+    if (configured == null || configured.isBlank()) {
+      return Set.of();
     }
-    long eventMillis = eventTimestamp.toEpochMilli();
-    long currentMillis = clock.getCurrentTime();
-    if (eventMillis > currentMillis) {
-      clock.advanceTime(eventMillis - currentMillis, TimeUnit.MILLISECONDS);
+    return Arrays.stream(configured.split(","))
+        .map(String::trim)
+        .filter(value -> !value.isBlank())
+        .collect(java.util.stream.Collectors.toSet());
+  }
+
+  private java.util.Map<String, Object> withEventTimestamp(ChangesetEntry entry) {
+    java.util.Map<String, Object> payload = new HashMap<>();
+    if (entry.data() != null) {
+      payload.putAll(entry.data());
     }
+    payload.put("eventTimestamp", entry.timestamp().toEpochMilli());
+    return payload;
   }
 
   private record ApplyResult(

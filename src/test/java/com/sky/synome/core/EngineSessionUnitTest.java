@@ -8,6 +8,7 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 import com.sky.synome.config.EngineConfig;
 import java.security.AccessController;
 import java.security.PrivilegedAction;
+import java.time.Duration;
 import java.util.List;
 import java.util.Map;
 import org.junit.jupiter.api.Test;
@@ -147,6 +148,21 @@ class EngineSessionUnitTest {
       @Override
       public boolean recoveryEnabled() {
         return true;
+      }
+
+      @Override
+      public boolean eventReplayEnabled() {
+        return true;
+      }
+
+      @Override
+      public Duration eventReplayWindow() {
+        return Duration.ofMinutes(30);
+      }
+
+      @Override
+      public String eventEntrypoints() {
+        return "transactions";
       }
     };
   }

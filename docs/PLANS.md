@@ -25,8 +25,12 @@ This file is the source of truth for current implementation status and delivery 
   - Checkpoint serializer/store/service, recovery startup orchestration, replay mode, scheduled/manual checkpoint triggers, and checkpoint REST endpoints are implemented.
   - Recovery determinism and crash-recovery integration tests exist.
   - M2 closeout hardening is complete (structured diagnostics, failure-path coverage, and operations runbook).
-- M3/M4 foundations exist:
-  - EVENT/EMIT entry-point path with pseudo-clock progression is implemented and tested.
+- M3 CEP runtime is complete:
+  - Event projection persistence (`changeset_events`) and replay-window event rehydration are implemented.
+  - Recovery now replays FACT tail and in-window EVENT history deterministically.
+  - Event diagnostics APIs (`GET /api/v1/events`, `GET /api/v1/events/{changesetId}`) are implemented.
+  - CEP replay-window determinism tests cover restart boundaries and event window filtering.
+- M4 foundations exist:
   - Runtime derivation/retraction listener exists (`DerivationTracker`) and is wired into the session.
 - M6 foundations exist:
   - Read/query APIs for changesets and facts exist.
@@ -34,19 +38,18 @@ This file is the source of truth for current implementation status and delivery 
 
 ### Remaining gaps for next milestones
 
-1. CEP replay-window semantics are not implemented; replay currently follows `sequence_num` only.
-2. Provenance is currently transient/in-memory only; no persisted DAG or explanation API.
-3. Rule hot swap orchestration is not implemented.
-4. API authentication/authorization, SSE operations surface, and graceful shutdown lifecycle are not implemented.
+1. Provenance is currently transient/in-memory only; no persisted DAG or explanation API.
+2. Rule hot swap orchestration is not implemented.
+3. API authentication/authorization, SSE operations surface, and graceful shutdown lifecycle are not implemented.
 
 ### Execution Plan Files
 
 - Completed baselines:
   - `docs/exec-plans/completed/M2_EXECUTION_PLAN.md`
   - `docs/exec-plans/completed/M2_CLOSEOUT_EXECUTION_PLAN.md`
+  - `docs/exec-plans/completed/M3_EXECUTION_PLAN.md`
 - Remaining milestones index: `docs/exec-plans/README.md`.
 - Active detailed plans:
-  - `docs/exec-plans/pending/M3_EXECUTION_PLAN.md`
   - `docs/exec-plans/pending/M4_EXECUTION_PLAN.md`
   - `docs/exec-plans/pending/M5_EXECUTION_PLAN.md`
   - `docs/exec-plans/pending/M6_EXECUTION_PLAN.md`
@@ -96,17 +99,17 @@ Exit criteria:
 - Idempotency contract remains intact after restart.
 
 ### M3: CEP Runtime
-Status: PARTIAL
+Status: DONE
 
 Goal: deterministic event-time behavior in live execution and recovery replay.
 
 - [x] EVENT/EMIT entry-point insertion path in changeset processing.
 - [x] Pseudo-clock advancement from event timestamps.
-- [ ] Dedicated clock manager with explicit live/replay mode boundaries.
-- [ ] Replay-window computation from temporal rule/event contracts.
-- [ ] Recovery replay semantics for window-bounded events.
-- [ ] Event query/inspection APIs.
-- [ ] CEP determinism integration tests (window boundaries, out-of-order events, restart behavior).
+- [x] Dedicated clock manager with explicit live/replay mode boundaries.
+- [x] Replay-window computation from temporal rule/event contracts.
+- [x] Recovery replay semantics for window-bounded events.
+- [x] Event query/inspection APIs.
+- [x] CEP determinism integration tests (window boundaries, out-of-order events, restart behavior).
 
 Exit criteria:
 
