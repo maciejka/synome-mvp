@@ -213,9 +213,9 @@ Likely updated files:
 
 ## 10. Exit Checklist
 
-- [ ] Failure matrix and hardening checklist implemented.
-- [ ] Structured diagnostics validated.
-- [ ] Error contract hardening merged with tests.
-- [ ] Runbook diagnostics section published.
-- [ ] `./gradlew qa` green.
-- [ ] `docs/PLANS.md` M2 moved to `DONE`.
+- [x] Failure matrix and hardening checklist implemented.
+- [x] Structured diagnostics validated.
+- [x] Error contract hardening merged with tests.
+- [x] Runbook diagnostics section published.
+- [x] `./gradlew qa` green.
+- [x] `docs/PLANS.md` M2 moved to `DONE`.

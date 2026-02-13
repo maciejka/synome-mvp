@@ -60,10 +60,12 @@ public class ErrorMapper implements ExceptionMapper<Exception> {
     }
 
     if (exception instanceof CheckpointNotFoundException cnf) {
+      Map<String, Object> details =
+          cnf.checkpointId() == null ? Map.of() : Map.of("checkpointId", cnf.checkpointId());
       return Response.status(Response.Status.NOT_FOUND)
           .entity(
               new ErrorResponse(
-                  "CHECKPOINT_NOT_FOUND", cnf.getMessage(), Map.of(), Instant.now(), requestId))
+                  "CHECKPOINT_NOT_FOUND", cnf.getMessage(), details, Instant.now(), requestId))
           .build();
     }
 
@@ -71,7 +73,7 @@ public class ErrorMapper implements ExceptionMapper<Exception> {
       return Response.status(Response.Status.BAD_REQUEST)
           .entity(
               new ErrorResponse(
-                  "CHECKPOINT_ERROR", ce.getMessage(), Map.of(), Instant.now(), requestId))
+                  "CHECKPOINT_ERROR", ce.getMessage(), ce.details(), Instant.now(), requestId))
           .build();
     }
 

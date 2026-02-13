@@ -46,16 +46,61 @@ public class CheckpointService {
   @Inject DSLContext dsl;
 
   public CheckpointRecord createCheckpoint(String reason) {
+    String checkpointIdForLogs = "pending";
+    long checkpointSequenceForLogs = 0L;
+    int factCountForLogs = 0;
+    long sizeBytesForLogs = 0L;
+    String phase = "acquire_lock";
+    String normalizedReason = normalizeReason(reason);
+    long start = System.currentTimeMillis();
+
+    LOG.infof(
+        "checkpoint.lifecycle event=checkpoint.create.start checkpointId=%s checkpointSequence=%d "
+            + "factCount=%d sizeBytes=%d durationMs=%d reason=%s phase=%s",
+        checkpointIdForLogs,
+        checkpointSequenceForLogs,
+        factCountForLogs,
+        sizeBytesForLogs,
+        0,
+        normalizedReason,
+        phase);
+
     if (!engineConfig.checkpointEnabled()) {
-      throw new CheckpointException("Checkpointing is disabled by configuration");
+      throw new CheckpointException(
+          "Checkpointing is disabled by configuration",
+          Map.of("operation", "checkpoint_create", "phase", "configuration"));
     }
 
     var lock = engineSession.sessionLock();
     if (!lock.tryAcquire(engineConfig.lockTimeoutMs())) {
-      throw new CheckpointException("Could not acquire session lock to create checkpoint");
+      long durationMs = System.currentTimeMillis() - start;
+      LOG.errorf(
+          "checkpoint.lifecycle event=checkpoint.create.failure "
+              + "checkpointId=%s checkpointSequence=%d "
+              + "factCount=%d sizeBytes=%d durationMs=%d reason=%s phase=%s errorType=%s",
+          checkpointIdForLogs,
+          checkpointSequenceForLogs,
+          factCountForLogs,
+          sizeBytesForLogs,
+          durationMs,
+          normalizedReason,
+          phase,
+          "LockTimeout");
+      throw new CheckpointException(
+          "Could not acquire session lock to create checkpoint within "
+              + engineConfig.lockTimeoutMs()
+              + "ms",
+          Map.of(
+              "operation",
+              "checkpoint_create",
+              "phase",
+              phase,
+              "lockTimeoutMs",
+              engineConfig.lockTimeoutMs()));
     }
 
     try {
+      phase = "snapshot";
       List<EngineSession.RestorableFact> sessionFacts =
           new ArrayList<>(engineSession.snapshotBaseFacts());
       sessionFacts.sort(Comparator.comparing(EngineSession.RestorableFact::factKey));
@@ -71,19 +116,25 @@ public class CheckpointService {
       byte[] factBlob = checkpointSerializer.serializeFacts(facts);
       byte[] registryBlob = checkpointSerializer.serializeRegistry(registry);
 
+      phase = "resolve_boundary";
       long sequenceNum = changesetLog.latestFinalizedSequence().orElse(0L);
       long clockMillis = engineSession.currentClockMillis();
+      phase = "resolve_rule_version";
       UUID ruleVersionId = resolveRuleVersionId();
       UUID checkpointId = UUID.randomUUID();
+      checkpointIdForLogs = checkpointId.toString();
+      checkpointSequenceForLogs = sequenceNum;
+      factCountForLogs = facts.size();
 
       Map<String, Object> metadata = new LinkedHashMap<>();
       metadata.put("schemaVersion", CHECKPOINT_SCHEMA_VERSION);
-      metadata.put("reason", reason == null ? "manual" : reason);
+      metadata.put("reason", normalizedReason);
       metadata.put("capturedAt", Instant.now().toString());
       metadata.put("rulesPath", engineConfig.rulesPath());
       metadata.put("rulesFile", engineConfig.defaultRulesFile());
 
       long sizeBytes = factBlob.length + registryBlob.length;
+      sizeBytesForLogs = sizeBytes;
       CheckpointStore.NewCheckpoint checkpoint =
           new CheckpointStore.NewCheckpoint(
               checkpointId,
@@ -97,18 +148,57 @@ public class CheckpointService {
               metadata,
               sizeBytes);
 
+      phase = "persist";
       CheckpointRecord created = checkpointStore.create(checkpoint);
+      phase = "prune_retention";
       checkpointStore.pruneKeeping(engineConfig.checkpointRetainCount());
 
+      long durationMs = System.currentTimeMillis() - start;
       LOG.infof(
-          "Created checkpoint %s at sequence=%d facts=%d clock=%dms size=%dB reason=%s",
+          "checkpoint.lifecycle event=checkpoint.create.success "
+              + "checkpointId=%s checkpointSequence=%d "
+              + "factCount=%d sizeBytes=%d durationMs=%d reason=%s phase=completed",
           created.checkpointId(),
           created.sequenceNum(),
           created.factCount(),
-          created.clockMillis(),
           created.sizeBytes(),
+          durationMs,
           metadata.get("reason"));
       return created;
+    } catch (RuntimeException e) {
+      long durationMs = System.currentTimeMillis() - start;
+      LOG.errorf(
+          e,
+          "checkpoint.lifecycle event=checkpoint.create.failure "
+              + "checkpointId=%s checkpointSequence=%d "
+              + "factCount=%d sizeBytes=%d durationMs=%d reason=%s phase=%s errorType=%s",
+          checkpointIdForLogs,
+          checkpointSequenceForLogs,
+          factCountForLogs,
+          sizeBytesForLogs,
+          durationMs,
+          normalizedReason,
+          phase,
+          e.getClass().getSimpleName());
+      throw new CheckpointException(
+          "Checkpoint creation failed in phase="
+              + phase
+              + " checkpointId="
+              + checkpointIdForLogs
+              + ": "
+              + e.getMessage(),
+          e,
+          Map.of(
+              "operation",
+              "checkpoint_create",
+              "phase",
+              phase,
+              "checkpointId",
+              checkpointIdForLogs,
+              "checkpointSequence",
+              checkpointSequenceForLogs,
+              "reason",
+              normalizedReason));
     } finally {
       lock.release();
     }
@@ -215,5 +305,12 @@ public class CheckpointService {
 
     String seed = engineConfig.rulesPath() + "/" + engineConfig.defaultRulesFile();
     return UUID.nameUUIDFromBytes(seed.getBytes(StandardCharsets.UTF_8));
+  }
+
+  private String normalizeReason(String reason) {
+    if (reason == null || reason.isBlank()) {
+      return "manual";
+    }
+    return reason;
   }
 }

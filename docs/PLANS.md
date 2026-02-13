@@ -24,6 +24,7 @@ This file is the source of truth for current implementation status and delivery 
 - M2 checkpoint/recovery runtime baseline is delivered:
   - Checkpoint serializer/store/service, recovery startup orchestration, replay mode, scheduled/manual checkpoint triggers, and checkpoint REST endpoints are implemented.
   - Recovery determinism and crash-recovery integration tests exist.
+  - M2 closeout hardening is complete (structured diagnostics, failure-path coverage, and operations runbook).
 - M3/M4 foundations exist:
   - EVENT/EMIT entry-point path with pseudo-clock progression is implemented and tested.
   - Runtime derivation/retraction listener exists (`DerivationTracker`) and is wired into the session.
@@ -33,22 +34,23 @@ This file is the source of truth for current implementation status and delivery 
 
 ### Remaining gaps for next milestones
 
-1. M2 closeout still needs completion hardening and runbook-level diagnostics.
-2. CEP replay-window semantics are not implemented; replay currently follows `sequence_num` only.
-3. Provenance is currently transient/in-memory only; no persisted DAG or explanation API.
-4. Rule hot swap orchestration is not implemented.
-5. API authentication/authorization, SSE operations surface, and graceful shutdown lifecycle are not implemented.
+1. CEP replay-window semantics are not implemented; replay currently follows `sequence_num` only.
+2. Provenance is currently transient/in-memory only; no persisted DAG or explanation API.
+3. Rule hot swap orchestration is not implemented.
+4. API authentication/authorization, SSE operations surface, and graceful shutdown lifecycle are not implemented.
 
 ### Execution Plan Files
 
-- Completed baseline: `docs/exec-plans/completed/M2_EXECUTION_PLAN.md`.
+- Completed baselines:
+  - `docs/exec-plans/completed/M2_EXECUTION_PLAN.md`
+  - `docs/exec-plans/completed/M2_CLOSEOUT_EXECUTION_PLAN.md`
 - Remaining milestones index: `docs/exec-plans/README.md`.
 - Active detailed plans:
-  - `docs/exec-plans/pending/M2_CLOSEOUT_EXECUTION_PLAN.md`
   - `docs/exec-plans/pending/M3_EXECUTION_PLAN.md`
   - `docs/exec-plans/pending/M4_EXECUTION_PLAN.md`
   - `docs/exec-plans/pending/M5_EXECUTION_PLAN.md`
   - `docs/exec-plans/pending/M6_EXECUTION_PLAN.md`
+- Runbook: `docs/RUNBOOK.md`
 
 ## Milestones
 
@@ -72,7 +74,7 @@ Exit criteria:
 - API docs/examples match runtime validation behavior.
 
 ### M2: Checkpoints and Recovery
-Status: PARTIAL
+Status: DONE
 
 Goal: deterministic restart from latest checkpoint plus ordered replay, without manual repair.
 
@@ -84,7 +86,7 @@ Goal: deterministic restart from latest checkpoint plus ordered replay, without 
 - [x] Manual + scheduled checkpoint creation.
 - [x] Checkpoint REST endpoints (create/list/get/latest/by-id).
 - [x] Deterministic restart and crash-recovery integration tests.
-- [ ] Hardening closeout checklist and runbook-level diagnostics.
+- [x] Hardening closeout checklist and runbook-level diagnostics.
 
 Exit criteria:
 

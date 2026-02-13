@@ -39,7 +39,7 @@ public class MessagePackLz4CheckpointSerializer implements CheckpointSerializer 
 
   @Override
   public List<CheckpointFact> deserializeFacts(byte[] compressedBlob) {
-    return readCompressed(compressedBlob, FACT_LIST_TYPE);
+    return readCompressed(compressedBlob, FACT_LIST_TYPE, "fact_blob");
   }
 
   @Override
@@ -49,7 +49,7 @@ public class MessagePackLz4CheckpointSerializer implements CheckpointSerializer 
 
   @Override
   public Map<String, CheckpointRegistryEntry> deserializeRegistry(byte[] compressedBlob) {
-    return readCompressed(compressedBlob, REGISTRY_TYPE);
+    return readCompressed(compressedBlob, REGISTRY_TYPE, "fact_registry");
   }
 
   private byte[] writeCompressed(Object value) {
@@ -70,15 +70,19 @@ public class MessagePackLz4CheckpointSerializer implements CheckpointSerializer 
     }
   }
 
-  private <T> T readCompressed(byte[] compressedBlob, TypeReference<T> type) {
+  private <T> T readCompressed(byte[] compressedBlob, TypeReference<T> type, String payloadLabel) {
     if (compressedBlob == null || compressedBlob.length < 4) {
-      throw new CheckpointException("Checkpoint blob is null or truncated");
+      throw new CheckpointException("Checkpoint payload " + payloadLabel + " is null or truncated");
     }
     try {
       ByteBuffer buffer = ByteBuffer.wrap(compressedBlob);
       int decompressedSize = buffer.getInt();
       if (decompressedSize < 0) {
-        throw new CheckpointException("Checkpoint blob contains invalid decompressed size");
+        throw new CheckpointException(
+            "Checkpoint payload "
+                + payloadLabel
+                + " contains invalid decompressed size: "
+                + decompressedSize);
       }
       byte[] compressed = new byte[buffer.remaining()];
       buffer.get(compressed);
@@ -90,7 +94,13 @@ public class MessagePackLz4CheckpointSerializer implements CheckpointSerializer 
     } catch (CheckpointException e) {
       throw e;
     } catch (Exception e) {
-      throw new CheckpointException("Failed to deserialize checkpoint payload", e);
+      throw new CheckpointException(
+          "Failed to deserialize checkpoint payload "
+              + payloadLabel
+              + " (blobLength="
+              + compressedBlob.length
+              + ")",
+          e);
     }
   }
 }

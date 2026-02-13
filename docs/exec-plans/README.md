@@ -5,10 +5,10 @@ This directory tracks detailed execution plans for each milestone in `docs/PLANS
 ## Completed
 
 - `docs/exec-plans/completed/M2_EXECUTION_PLAN.md` - historical implementation plan used to deliver the M2 runtime baseline.
+- `docs/exec-plans/completed/M2_CLOSEOUT_EXECUTION_PLAN.md` - hardening closeout plan that completed M2 diagnostics, failure-path tests, and runbook deliverables.
 
 ## Pending / Active
 
-- `docs/exec-plans/pending/M2_CLOSEOUT_EXECUTION_PLAN.md` - close remaining M2 hardening and diagnostics gaps.
 - `docs/exec-plans/pending/M3_EXECUTION_PLAN.md` - complete CEP replay-window semantics and deterministic event-time recovery.
 - `docs/exec-plans/pending/M4_EXECUTION_PLAN.md` - implement full provenance graph, persistence, and explanation APIs.
 - `docs/exec-plans/pending/M5_EXECUTION_PLAN.md` - implement safe rule hot swap with rollback.

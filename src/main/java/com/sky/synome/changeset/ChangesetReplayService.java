@@ -1,7 +1,9 @@
 package com.sky.synome.changeset;
 
+import com.sky.synome.checkpoint.CheckpointException;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
+import java.util.Map;
 import org.jboss.logging.Logger;
 
 @ApplicationScoped
@@ -17,7 +19,25 @@ public class ChangesetReplayService {
     int replayed = 0;
     for (ChangesetLog.ReplayableLoggedChangeset logged :
         changesetLog.listFinalizedAfter(sequenceBoundaryExclusive)) {
-      changesetProcessor.replay(logged.changeset());
+      try {
+        changesetProcessor.replay(logged.changeset());
+      } catch (RuntimeException e) {
+        throw new CheckpointException(
+            "Replay failed for sequence_num="
+                + logged.sequenceNum()
+                + " after checkpoint sequence="
+                + sequenceBoundaryExclusive,
+            e,
+            Map.of(
+                "operation",
+                "recovery_replay",
+                "phase",
+                "replay_tail",
+                "sequenceNum",
+                logged.sequenceNum(),
+                "checkpointSequence",
+                sequenceBoundaryExclusive));
+      }
       replayed++;
     }
     if (replayed > 0) {
