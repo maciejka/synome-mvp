@@ -5,6 +5,8 @@ import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
+import com.sky.synome.test.PostgresTestResource;
+import io.quarkus.test.common.QuarkusTestResource;
 import io.quarkus.test.junit.QuarkusTest;
 import jakarta.inject.Inject;
 import org.junit.jupiter.api.Test;
@@ -12,6 +14,7 @@ import org.kie.api.definition.type.FactType;
 import org.kie.api.runtime.rule.FactHandle;
 
 @QuarkusTest
+@QuarkusTestResource(PostgresTestResource.class)
 class EngineSessionTest {
 
   private static final String DRL_PACKAGE = "com.sky.synome.rules";

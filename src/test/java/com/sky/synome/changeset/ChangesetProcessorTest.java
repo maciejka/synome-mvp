@@ -11,6 +11,8 @@ import static org.jooq.impl.DSL.table;
 
 import com.sky.synome.api.dto.ChangesetResponse;
 import com.sky.synome.core.EngineSession;
+import com.sky.synome.test.PostgresTestResource;
+import io.quarkus.test.common.QuarkusTestResource;
 import io.quarkus.test.junit.QuarkusTest;
 import jakarta.inject.Inject;
 import java.time.Instant;
@@ -25,6 +27,7 @@ import org.junit.jupiter.api.TestMethodOrder;
 import org.kie.api.time.SessionPseudoClock;
 
 @QuarkusTest
+@QuarkusTestResource(PostgresTestResource.class)
 @TestMethodOrder(MethodOrderer.OrderAnnotation.class)
 class ChangesetProcessorTest {
 

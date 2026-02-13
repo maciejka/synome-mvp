@@ -4,6 +4,8 @@ import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import com.sky.synome.core.EngineSession;
+import com.sky.synome.test.PostgresTestResource;
+import io.quarkus.test.common.QuarkusTestResource;
 import io.quarkus.test.junit.QuarkusTest;
 import io.quarkus.test.junit.TestProfile;
 import jakarta.inject.Inject;
@@ -15,6 +17,7 @@ import java.util.concurrent.TimeUnit;
 import org.junit.jupiter.api.Test;
 
 @QuarkusTest
+@QuarkusTestResource(PostgresTestResource.class)
 @TestProfile(LockTimeoutTestProfile.class)
 class ChangesetProcessorLockTimeoutConfigTest {
 

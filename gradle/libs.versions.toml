@@ -4,6 +4,7 @@ drools = "8.44.2.Final"
 jooq = "3.19.18"
 spotless = "7.0.2"
 spotbugs-plugin = "6.1.7"
+testcontainers = "1.21.2"
 
 [libraries]
 quarkus-bom = { module = "io.quarkus.platform:quarkus-bom", version.ref = "quarkus" }
@@ -20,6 +21,7 @@ drools-engine = { module = "org.drools:drools-engine", version.ref = "drools" }
 drools-mvel = { module = "org.drools:drools-mvel", version.ref = "drools" }
 quarkus-junit5 = { module = "io.quarkus:quarkus-junit5" }
 rest-assured = { module = "io.rest-assured:rest-assured" }
+testcontainers-postgresql = { module = "org.testcontainers:postgresql", version.ref = "testcontainers" }
 
 [plugins]
 quarkus = { id = "io.quarkus", version.ref = "quarkus" }

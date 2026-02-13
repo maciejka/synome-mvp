@@ -4,6 +4,8 @@ import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
+import com.sky.synome.test.PostgresTestResource;
+import io.quarkus.test.common.QuarkusTestResource;
 import io.quarkus.test.junit.QuarkusTest;
 import jakarta.inject.Inject;
 import java.time.Instant;
@@ -13,6 +15,7 @@ import java.util.UUID;
 import org.junit.jupiter.api.Test;
 
 @QuarkusTest
+@QuarkusTestResource(PostgresTestResource.class)
 class ChangesetValidatorTest {
 
   @Inject ChangesetValidator validator;

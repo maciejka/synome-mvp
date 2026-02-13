@@ -7,7 +7,9 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import com.sky.synome.api.dto.ChangesetResponse;
 import com.sky.synome.api.dto.EffectsSummary;
+import com.sky.synome.test.PostgresTestResource;
 import io.quarkus.test.junit.QuarkusTest;
+import io.quarkus.test.common.QuarkusTestResource;
 import jakarta.inject.Inject;
 import java.util.List;
 import java.util.Map;
@@ -15,6 +17,7 @@ import java.util.UUID;
 import org.junit.jupiter.api.Test;
 
 @QuarkusTest
+@QuarkusTestResource(PostgresTestResource.class)
 class ChangesetLogTest {
 
   @Inject ChangesetLog changesetLog;
