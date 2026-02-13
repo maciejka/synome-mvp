@@ -3,6 +3,7 @@ package com.sky.synome.changeset;
 import com.sky.synome.api.dto.ChangesetResponse;
 import com.sky.synome.api.dto.DerivedFactSummary;
 import com.sky.synome.api.dto.EffectsSummary;
+import com.sky.synome.config.EngineConfig;
 import com.sky.synome.core.DerivationTracker;
 import com.sky.synome.core.EngineSession;
 import com.sky.synome.core.FactRegistry;
@@ -29,6 +30,8 @@ public class ChangesetProcessor {
 
   @Inject EngineSession engineSession;
 
+  @Inject EngineConfig engineConfig;
+
   @Inject ChangesetValidator validator;
 
   @Inject ChangesetLog changesetLog;
@@ -37,7 +40,7 @@ public class ChangesetProcessor {
     long start = System.currentTimeMillis();
 
     var lock = engineSession.sessionLock();
-    if (!lock.tryAcquire(5000)) {
+    if (!lock.tryAcquire(engineConfig.lockTimeoutMs())) {
       throw new LockTimeoutException("Could not acquire session lock within timeout");
     }
 

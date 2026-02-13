@@ -191,7 +191,7 @@ All must pass:
 - [x] Task 3: Conflict exception + error mapper updates.
 - [x] Task 4: Atomicity mechanism implementation.
 - [x] Task 5: DTO/validator/processor contract alignment for events.
-- Task 6: Lock timeout config wiring.
+- [x] Task 6: Lock timeout config wiring.
 - Task 7: Testcontainers integration profile.
 - Task 8: New regression and contract tests.
 - Task 9: Final docs synchronization pass.
