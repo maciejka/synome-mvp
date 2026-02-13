@@ -85,6 +85,9 @@ Commit gate policy:
 - Run the aggregate QA task manually before every commit:
   - `./gradlew qa`
 - Do not create commits when `./gradlew qa` fails.
+- Keep commit subjects aligned with existing repository history:
+  - Use a capitalized imperative summary without a `type:` prefix (for example: `Document commit message style policy`)
+  - Keep subject short, descriptive, and without trailing punctuation.
 - For every commit created by Codex, add this trailer to the commit message:
   - `Co-Authored-By: Codex <noreply@openai.com>`
 
