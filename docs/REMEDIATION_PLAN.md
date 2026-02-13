@@ -193,5 +193,5 @@ All must pass:
 - [x] Task 5: DTO/validator/processor contract alignment for events.
 - [x] Task 6: Lock timeout config wiring.
 - [x] Task 7: Testcontainers integration profile.
-- Task 8: New regression and contract tests.
+- [x] Task 8: New regression and contract tests.
 - Task 9: Final docs synchronization pass.
