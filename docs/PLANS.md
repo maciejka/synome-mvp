@@ -5,14 +5,14 @@
 This file is the source of truth for current implementation status and delivery sequencing.
 
 - `docs/ARCHITECTURE.md` defines the target end-state.
-- This file tracks what is implemented now and what is next.
+- This file tracks what is implemented now and what remains.
 - Snapshot date: 2026-02-13.
 
 ## Status Legend
 
 - `DONE`: implemented and verified by tests.
-- `PARTIAL`: implemented but missing contract guarantees/tests.
-- `PLANNED`: not implemented.
+- `PARTIAL`: implemented baseline exists but guarantees, coverage, or hardening are still incomplete.
+- `PLANNED`: not implemented beyond trivial scaffolding.
 - `BLOCKED`: cannot proceed until prerequisite is done.
 
 ## Current Snapshot (2026-02-13)
@@ -20,28 +20,42 @@ This file is the source of truth for current implementation status and delivery 
 ### Delivered
 
 - Phase 0 foundation is complete (build, Quarkus app, Flyway, PostgreSQL, jOOQ producer).
-- Phase 1 stabilization hardening is delivered:
-  - Engine session bootstraps with DRL compilation.
-  - Strict idempotency implemented (`changeset_id` replay + payload mismatch conflict).
-  - Changeset atomicity implemented with reservation/finalize + compensating rollback.
-  - FACT/EVENT contract enforcement implemented in DTO/validator/processor.
-  - Stable conflict code mapped (`DUPLICATE_CHANGESET_PAYLOAD_MISMATCH`).
-  - Lock timeout reads typed config (`engine.lock-timeout-ms`).
-  - Regression + API contract coverage added for idempotency, atomicity, validation, and errors.
-  - Test resource bootstraps PostgreSQL via Testcontainers, with localhost fallback when Docker API
-    compatibility prevents container startup.
+- M1 stabilization is complete (strict idempotency, atomicity rollback, FACT/EVENT validation contract, lock-timeout config, and API/error contract tests).
+- M2 checkpoint/recovery runtime baseline is delivered:
+  - Checkpoint serializer/store/service, recovery startup orchestration, replay mode, scheduled/manual checkpoint triggers, and checkpoint REST endpoints are implemented.
+  - Recovery determinism and crash-recovery integration tests exist.
+- M3/M4 foundations exist:
+  - EVENT/EMIT entry-point path with pseudo-clock progression is implemented and tested.
+  - Runtime derivation/retraction listener exists (`DerivationTracker`) and is wired into the session.
+- M6 foundations exist:
+  - Read/query APIs for changesets and facts exist.
+  - Base health endpoint support is wired via Quarkus SmallRye Health.
 
 ### Remaining gaps for next milestones
 
-1. `fireUntilHalt()` is still not part of the active write-path runtime.
-2. Recovery/checkpoint runtime (beyond DB schema), CEP replay window, and provenance phases remain unimplemented.
+1. M2 closeout still needs completion hardening and runbook-level diagnostics.
+2. CEP replay-window semantics are not implemented; replay currently follows `sequence_num` only.
+3. Provenance is currently transient/in-memory only; no persisted DAG or explanation API.
+4. Rule hot swap orchestration is not implemented.
+5. API authentication/authorization, SSE operations surface, and graceful shutdown lifecycle are not implemented.
+
+### Execution Plan Files
+
+- Completed baseline: `docs/exec-plans/completed/M2_EXECUTION_PLAN.md`.
+- Remaining milestones index: `docs/exec-plans/README.md`.
+- Active detailed plans:
+  - `docs/exec-plans/pending/M2_CLOSEOUT_EXECUTION_PLAN.md`
+  - `docs/exec-plans/pending/M3_EXECUTION_PLAN.md`
+  - `docs/exec-plans/pending/M4_EXECUTION_PLAN.md`
+  - `docs/exec-plans/pending/M5_EXECUTION_PLAN.md`
+  - `docs/exec-plans/pending/M6_EXECUTION_PLAN.md`
 
 ## Milestones
 
-### M1: Phase 1 Stabilization (Must complete before Phase 2)
+### M1: Phase 1 Stabilization
 Status: DONE
 
-Goal: harden existing write path and contracts before checkpoint/replay work.
+Goal: harden write-path contracts before deeper lifecycle features.
 
 - [x] Implement strict idempotency contract.
 - [x] Guarantee changeset atomicity.
@@ -57,101 +71,112 @@ Exit criteria:
 - No partial state when apply/logging fails.
 - API docs/examples match runtime validation behavior.
 
-### M2: Checkpoints and Recovery (Phase 2)
-Status: PARTIAL (core runtime and API implemented; hardening and full QA gate still pending)
+### M2: Checkpoints and Recovery
+Status: PARTIAL
 
 Goal: deterministic restart from latest checkpoint plus ordered replay, without manual repair.
-Detailed execution plan: `docs/exec-plans/completed/M2_EXECUTION_PLAN.md`.
 
-- [x] Checkpoint schema groundwork exists (`V002__checkpoints.sql`).
-- [x] Define checkpoint domain contract (payload schema version + metadata contract + consistency validation).
-- [x] Fact serializer/deserializer (MessagePack + LZ4) for base facts and fact registry payloads.
-- [x] Checkpoint store (write, latest-read, point-read, retention pruning hook).
-- [x] Recovery bootstrap sequence integrated into startup path.
-- [x] Changeset replay after checkpoint (`sequence_num > checkpoint.sequence_num`, strict ordering).
-- [x] Recovery-safe apply path (replay mode that does not re-log already finalized changesets).
-- [x] Checkpoint trigger strategy (manual endpoint plus configurable periodic checkpointing).
-- [x] Checkpoint API endpoints (create/list/get/latest/by-id).
-- [ ] Recovery observability (add explicit metrics; logs are in place).
-- [x] Round-trip, deterministic restart, and crash-recovery integration tests.
+- [x] Checkpoint schema and domain contract.
+- [x] MessagePack+LZ4 serialization for facts/registry.
+- [x] Checkpoint store and service (write/read/list/latest + retention hook).
+- [x] Recovery bootstrap integrated into startup path.
+- [x] Replay-safe apply path (no duplicate logging).
+- [x] Manual + scheduled checkpoint creation.
+- [x] Checkpoint REST endpoints (create/list/get/latest/by-id).
+- [x] Deterministic restart and crash-recovery integration tests.
+- [ ] Hardening closeout checklist and runbook-level diagnostics.
 
 Exit criteria:
 
-- Restarted engine converges to same logical state as uninterrupted execution for the same changeset stream.
-- Recovery replays only finalized rows and only rows after the checkpoint sequence boundary.
-- Checkpoint payload excludes events and derived facts; those are replayed/re-derived correctly.
+- Restarted engine converges to same logical state as uninterrupted execution for the same stream.
+- Recovery replays only finalized rows and respects replay boundary semantics.
 - Corrupt/incompatible checkpoint payload fails fast with explicit diagnostics.
-- Idempotency contract remains intact after restart (duplicate same payload replays stored response, mismatch returns `409`).
+- Idempotency contract remains intact after restart.
 
-### M3: CEP Runtime (Phase 3)
-Status: PLANNED
+### M3: CEP Runtime
+Status: PARTIAL
 
-- [ ] Clock manager and event timestamp progression.
-- [ ] Event entry-point insertion path.
-- [ ] Replay window computation.
-- [ ] Replay semantics for event windows.
-- [ ] Event APIs.
-- [ ] CEP integration tests.
+Goal: deterministic event-time behavior in live execution and recovery replay.
+
+- [x] EVENT/EMIT entry-point insertion path in changeset processing.
+- [x] Pseudo-clock advancement from event timestamps.
+- [ ] Dedicated clock manager with explicit live/replay mode boundaries.
+- [ ] Replay-window computation from temporal rule/event contracts.
+- [ ] Recovery replay semantics for window-bounded events.
+- [ ] Event query/inspection APIs.
+- [ ] CEP determinism integration tests (window boundaries, out-of-order events, restart behavior).
 
 Exit criteria:
 
 - Event expiration/window behavior is deterministic in replay and runtime.
+- Recovery replays all required in-window events and only required in-window events.
 
-### M4: Provenance and Explanation (Phase 4)
-Status: PLANNED
+### M4: Provenance and Explanation
+Status: PARTIAL
 
-- [ ] Agenda + runtime provenance listeners.
-- [ ] In-memory derivation graph.
-- [ ] Explanation rendering.
-- [ ] Async persistence and export.
+Goal: produce explainable, queryable derivation chains for derived facts.
+
+- [x] Runtime derivation/retraction listener baseline (`DerivationTracker`).
+- [ ] Agenda listener + activation context capture.
+- [ ] In-memory provenance DAG with stable identifiers and relationship model.
+- [ ] Explanation rendering service.
+- [ ] Async persistence/export to provenance tables.
 - [ ] Provenance REST API.
-- [ ] Provenance tests (including CEP context).
+- [ ] Provenance tests (including CEP-driven derivations).
 
 Exit criteria:
 
-- Explain endpoint returns accurate multi-step derivations.
+- Explain endpoint returns accurate multi-step derivations and supports persisted history lookup.
 
-### M5: Rule Hot Swap (Phase 5)
-Status: PLANNED
+### M5: Rule Hot Swap
+Status: PARTIAL
 
+Goal: upgrade active rules without downtime and with deterministic rollback.
+
+- [x] Rule version persistence schema exists (`rule_versions`).
 - [ ] Candidate compile + compatibility checks.
 - [ ] Pre-swap checkpoint and rollback path.
-- [ ] Base fact transfer + event replay into new session.
-- [ ] Atomic session swap and version persistence.
-- [ ] Hot swap integration tests.
+- [ ] Base-fact transfer + in-window event replay into candidate session.
+- [ ] Atomic session swap + active version persistence.
+- [ ] Hot-swap integration tests.
 
 Exit criteria:
 
-- Rule swap occurs without downtime and with safe rollback.
+- Rule swap occurs without downtime and with safe rollback on failure.
 
-### M6: API Hardening and Operations (Phase 6)
-Status: PLANNED
+### M6: API Hardening and Operations
+Status: PARTIAL
 
-- [ ] API key auth filter + permission matrix.
-- [ ] Query and SSE resources.
-- [ ] Health/readiness endpoints.
-- [ ] Derived fact APIs.
+Goal: secure, operable API surface with lifecycle guarantees.
+
+- [x] Core query/read resources (changesets/facts).
+- [x] Base health endpoint support.
+- [ ] API key authentication filter.
+- [ ] Permission matrix/authorization model.
+- [ ] SSE resources for operational streams.
+- [ ] Derived fact/event APIs.
 - [ ] Graceful shutdown with final checkpoint and flush.
-- [ ] Full lifecycle test.
+- [ ] Full lifecycle and security contract tests.
 
 Exit criteria:
 
-- Full API surface secured and operational lifecycle validated.
+- Full API surface is secured and operational lifecycle behavior is validated.
 
 ## Dependency Graph
 
 ```text
-M1 (Phase 1 Stabilization)
-  -> M2 (Checkpoints/Recovery)
-  -> M3 (CEP)
-  -> M4 (Provenance)
-M2 + M3 + M4
+M1 (DONE)
+  -> M2 closeout
+M2 closeout
+  -> M3 (CEP completion)
+  -> M6 security/ops baseline
+M3 + M4
   -> M5 (Hot Swap)
-M5
-  -> M6 (API Hardening/Operations)
+M5 + M6
+  -> release readiness
 ```
 
 ## Tracking Notes
 
-- Do not mark an item `DONE` unless covered by automated tests.
-- Keep this file in sync with actual code behavior, not intended behavior.
+- Do not mark a milestone `DONE` unless its exit criteria are covered by automated tests.
+- Keep this file aligned with implemented behavior, not planned intent.
