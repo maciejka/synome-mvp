@@ -2,6 +2,8 @@ package com.sky.synome.api;
 
 import com.sky.synome.api.dto.EventSummaryResponse;
 import com.sky.synome.changeset.ChangesetEventStore;
+import com.sky.synome.security.ApiPermission;
+import com.sky.synome.security.RequiresPermission;
 import jakarta.inject.Inject;
 import jakarta.ws.rs.DefaultValue;
 import jakarta.ws.rs.GET;
@@ -16,6 +18,7 @@ import java.util.UUID;
 
 @Path("/api/v1/events")
 @Produces(MediaType.APPLICATION_JSON)
+@RequiresPermission(ApiPermission.FACT_READ)
 public class EventResource {
 
   private static final int MAX_LIMIT = 500;

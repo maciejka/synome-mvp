@@ -1,6 +1,5 @@
 package com.sky.synome.api;
 
-import static io.restassured.RestAssured.given;
 import static org.hamcrest.Matchers.equalTo;
 import static org.hamcrest.Matchers.greaterThan;
 import static org.hamcrest.Matchers.hasItem;
@@ -26,7 +25,7 @@ class RuleVersionApiContractTest {
   void validateAndUploadExposeStableContract() {
     String drl = loadBootstrapDrl();
 
-    given()
+    ApiTestAuth.givenAuthorized()
         .contentType(ContentType.JSON)
         .body(Map.of("versionLabel", "M5-validate", "drl", drl))
         .when()
@@ -38,7 +37,7 @@ class RuleVersionApiContractTest {
         .body("compatible", equalTo(true))
         .body("checksum", notNullValue());
 
-    given()
+    ApiTestAuth.givenAuthorized()
         .contentType(ContentType.JSON)
         .body(Map.of("versionLabel", "M5-upload", "drl", drl, "uploadedBy", "qa"))
         .when()
@@ -58,7 +57,7 @@ class RuleVersionApiContractTest {
 
     applyChangeset("customer:C-RULE-1", "Before Swap");
 
-    given()
+    ApiTestAuth.givenAuthorized()
         .when()
         .post("/api/v1/rules/{versionId}/activate", firstVersionId)
         .then()
@@ -70,7 +69,7 @@ class RuleVersionApiContractTest {
 
     applyChangeset("customer:C-RULE-2", "After First Swap");
 
-    given()
+    ApiTestAuth.givenAuthorized()
         .when()
         .post("/api/v1/rules/{versionId}/activate", secondVersionId)
         .then()
@@ -78,7 +77,7 @@ class RuleVersionApiContractTest {
         .body("status", equalTo("ACTIVATED"))
         .body("activatedVersionId", equalTo(secondVersionId));
 
-    given()
+    ApiTestAuth.givenAuthorized()
         .when()
         .post("/api/v1/rules/{versionId}/rollback", firstVersionId)
         .then()
@@ -87,7 +86,7 @@ class RuleVersionApiContractTest {
         .body("activatedVersionId", equalTo(firstVersionId))
         .body("previousVersionId", equalTo(secondVersionId));
 
-    given()
+    ApiTestAuth.givenAuthorized()
         .when()
         .get("/api/v1/rules/active")
         .then()
@@ -95,7 +94,7 @@ class RuleVersionApiContractTest {
         .body("versionId", equalTo(firstVersionId))
         .body("active", equalTo(true));
 
-    given()
+    ApiTestAuth.givenAuthorized()
         .queryParam("limit", 20)
         .queryParam("offset", 0)
         .when()
@@ -108,7 +107,7 @@ class RuleVersionApiContractTest {
 
   @Test
   void validationFailureAndMissingVersionReturnErrorEnvelope() {
-    given()
+    ApiTestAuth.givenAuthorized()
         .contentType(ContentType.JSON)
         .body(Map.of("versionLabel", "invalid", "drl", "package x; rule \"broken\" when then"))
         .when()
@@ -118,7 +117,7 @@ class RuleVersionApiContractTest {
         .body("code", equalTo("RULE_VALIDATION_ERROR"))
         .body("details.compilationErrors", notNullValue());
 
-    given()
+    ApiTestAuth.givenAuthorized()
         .when()
         .post("/api/v1/rules/{versionId}/activate", UUID.randomUUID())
         .then()
@@ -173,7 +172,7 @@ class RuleVersionApiContractTest {
         end
         """;
 
-    given()
+    ApiTestAuth.givenAuthorized()
         .contentType(ContentType.JSON)
         .body(Map.of("versionLabel", "incompatible", "drl", incompatibleDrl))
         .when()
@@ -186,7 +185,7 @@ class RuleVersionApiContractTest {
   }
 
   private String upload(String label, String drl) {
-    return given()
+    return ApiTestAuth.givenAuthorized()
         .contentType(ContentType.JSON)
         .body(Map.of("versionLabel", label, "drl", drl, "uploadedBy", "qa"))
         .when()
@@ -219,7 +218,7 @@ class RuleVersionApiContractTest {
                                 "balance",
                                 150000))));
 
-    given()
+    ApiTestAuth.givenAuthorized()
         .contentType(ContentType.JSON)
         .body(payload)
         .when()

@@ -1,6 +1,5 @@
 package com.sky.synome.api;
 
-import static io.restassured.RestAssured.given;
 import static org.hamcrest.Matchers.equalTo;
 import static org.hamcrest.Matchers.greaterThan;
 import static org.hamcrest.Matchers.hasItem;
@@ -60,7 +59,7 @@ class ProvenanceApiContractTest {
             changesetId);
 
     String derivedFactId =
-        given()
+        ApiTestAuth.givenAuthorized()
             .contentType(ContentType.JSON)
             .body(payload)
             .when()
@@ -74,7 +73,7 @@ class ProvenanceApiContractTest {
 
     waitForProvenanceFact(derivedFactId);
 
-    given()
+    ApiTestAuth.givenAuthorized()
         .when()
         .get("/api/v1/provenance/facts/{factId}", derivedFactId)
         .then()
@@ -84,7 +83,7 @@ class ProvenanceApiContractTest {
         .body("producedByRule", notNullValue())
         .body("inputFactIds.size()", greaterThan(0));
 
-    given()
+    ApiTestAuth.givenAuthorized()
         .queryParam("maxDepth", 5)
         .when()
         .get("/api/v1/provenance/facts/{factId}/explain", derivedFactId)
@@ -93,7 +92,7 @@ class ProvenanceApiContractTest {
         .body("rootFactId", equalTo(derivedFactId))
         .body("explanation.dependsOn.size()", greaterThan(0));
 
-    given()
+    ApiTestAuth.givenAuthorized()
         .queryParam("maxDepth", 5)
         .when()
         .get("/api/v1/provenance/facts/{factId}/impact", "base:customer:C-PROV-API-1")
@@ -102,7 +101,7 @@ class ProvenanceApiContractTest {
         .body("rootFactId", equalTo("base:customer:C-PROV-API-1"))
         .body("impactedFactIds", hasItem(derivedFactId));
 
-    given()
+    ApiTestAuth.givenAuthorized()
         .queryParam("factType", "HighValueCustomer")
         .queryParam("limit", 20)
         .when()
@@ -114,7 +113,7 @@ class ProvenanceApiContractTest {
 
   @Test
   void provenanceFactEndpointReturns404WhenMissing() {
-    given()
+    ApiTestAuth.givenAuthorized()
         .when()
         .get("/api/v1/provenance/facts/{factId}", "derived:missing")
         .then()
@@ -127,7 +126,8 @@ class ProvenanceApiContractTest {
 
   private static void waitForProvenanceFact(String factId) throws InterruptedException {
     for (int attempt = 0; attempt < 30; attempt++) {
-      Response response = given().when().get("/api/v1/provenance/facts/{factId}", factId);
+      Response response =
+          ApiTestAuth.givenAuthorized().when().get("/api/v1/provenance/facts/{factId}", factId);
       if (response.statusCode() == 200) {
         return;
       }

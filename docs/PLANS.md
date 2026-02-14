@@ -158,18 +158,18 @@ Exit criteria:
 - Rule swap occurs without downtime and with safe rollback on failure.
 
 ### M6: API Hardening and Operations
-Status: PARTIAL
+Status: DONE
 
 Goal: secure, operable API surface with lifecycle guarantees.
 
 - [x] Core query/read resources (changesets/facts).
 - [x] Base health endpoint support.
-- [ ] API key authentication filter.
-- [ ] Permission matrix/authorization model.
-- [ ] SSE resources for operational streams.
-- [ ] Derived fact/event APIs.
-- [ ] Graceful shutdown with final checkpoint and flush.
-- [ ] Full lifecycle and security contract tests.
+- [x] API key authentication filter.
+- [x] Permission matrix/authorization model.
+- [x] SSE resources for operational streams.
+- [x] Derived fact/event APIs.
+- [x] Graceful shutdown with final checkpoint and flush.
+- [x] Full lifecycle and security contract tests.
 
 Exit criteria:
 

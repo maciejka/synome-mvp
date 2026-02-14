@@ -24,5 +24,11 @@ class EngineConfigOverridesTest {
     assertEquals(22, engineConfig.provenanceBatchSize());
     assertEquals(Duration.ofMillis(900), engineConfig.provenanceFlushInterval());
     assertEquals(Duration.ofMillis(120), engineConfig.provenanceRetryBackoff());
+    assertFalse(engineConfig.securityEnabled());
+    assertEquals("override-key", engineConfig.securityBootstrapKey());
+    assertEquals("override-name", engineConfig.securityBootstrapName());
+    assertEquals(Duration.ofSeconds(8), engineConfig.shutdownTimeout());
+    assertEquals(Duration.ofSeconds(2), engineConfig.opsStreamPollInterval());
+    assertEquals(12, engineConfig.opsStreamMaxBatch());
   }
 }

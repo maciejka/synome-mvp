@@ -1,6 +1,5 @@
 package com.sky.synome.api;
 
-import static io.restassured.RestAssured.given;
 import static org.hamcrest.Matchers.equalTo;
 import static org.hamcrest.Matchers.greaterThan;
 import static org.hamcrest.Matchers.hasKey;
@@ -19,7 +18,7 @@ class CheckpointApiContractTest {
 
   @Test
   void createCheckpointReturnsCreatedEnvelope() {
-    given()
+    ApiTestAuth.givenAuthorized()
         .when()
         .post("/api/v1/checkpoints")
         .then()
@@ -37,7 +36,7 @@ class CheckpointApiContractTest {
   @Test
   void listLatestAndByIdAreConsistent() {
     String checkpointId =
-        given()
+        ApiTestAuth.givenAuthorized()
             .when()
             .post("/api/v1/checkpoints")
             .then()
@@ -45,7 +44,7 @@ class CheckpointApiContractTest {
             .extract()
             .path("checkpointId");
 
-    given()
+    ApiTestAuth.givenAuthorized()
         .queryParam("limit", 10)
         .queryParam("offset", 0)
         .when()
@@ -57,7 +56,7 @@ class CheckpointApiContractTest {
         .body("[0]", hasKey("sequenceNum"))
         .body("[0]", hasKey("factCount"));
 
-    given()
+    ApiTestAuth.givenAuthorized()
         .when()
         .get("/api/v1/checkpoints/latest")
         .then()
@@ -65,7 +64,7 @@ class CheckpointApiContractTest {
         .body("checkpointId", notNullValue())
         .body("engineMetadata", hasKey("schemaVersion"));
 
-    given()
+    ApiTestAuth.givenAuthorized()
         .when()
         .get("/api/v1/checkpoints/{id}", checkpointId)
         .then()
@@ -76,7 +75,7 @@ class CheckpointApiContractTest {
 
   @Test
   void byIdReturns404ForMissingCheckpoint() {
-    given()
+    ApiTestAuth.givenAuthorized()
         .when()
         .get("/api/v1/checkpoints/{id}", UUID.randomUUID())
         .then()

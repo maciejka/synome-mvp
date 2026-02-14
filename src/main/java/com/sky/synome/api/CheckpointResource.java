@@ -6,6 +6,8 @@ import com.sky.synome.api.dto.CreateCheckpointResponse;
 import com.sky.synome.checkpoint.CheckpointNotFoundException;
 import com.sky.synome.checkpoint.CheckpointRecord;
 import com.sky.synome.checkpoint.CheckpointService;
+import com.sky.synome.security.ApiPermission;
+import com.sky.synome.security.RequiresPermission;
 import jakarta.inject.Inject;
 import jakarta.ws.rs.DefaultValue;
 import jakarta.ws.rs.GET;
@@ -21,6 +23,7 @@ import java.util.UUID;
 
 @Path("/api/v1/checkpoints")
 @Produces(MediaType.APPLICATION_JSON)
+@RequiresPermission(ApiPermission.CHECKPOINT_ADMIN)
 public class CheckpointResource {
 
   @Inject CheckpointService checkpointService;

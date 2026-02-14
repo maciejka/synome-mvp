@@ -8,6 +8,8 @@ import com.sky.synome.core.EngineClockManager;
 import com.sky.synome.core.EngineClockManager.ClockMode;
 import com.sky.synome.core.EngineSession;
 import com.sky.synome.core.FactRegistry;
+import com.sky.synome.ops.EngineLifecycle;
+import com.sky.synome.ops.EngineWriteUnavailableException;
 import com.sky.synome.provenance.ProvenanceCapture;
 import com.sky.synome.provenance.ProvenanceCollector;
 import com.sky.synome.provenance.ProvenanceGraph;
@@ -46,7 +48,13 @@ public class ChangesetProcessor {
 
   @Inject ProvenancePersistenceService provenancePersistenceService;
 
+  @Inject EngineLifecycle engineLifecycle;
+
   public ChangesetResponse process(Changeset changeset) {
+    if (!engineLifecycle.acceptsWrites()) {
+      throw new EngineWriteUnavailableException("Engine is not accepting writes");
+    }
+
     long start = System.currentTimeMillis();
 
     var lock = engineSession.sessionLock();

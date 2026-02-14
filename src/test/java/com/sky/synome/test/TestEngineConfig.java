@@ -105,4 +105,39 @@ public final class TestEngineConfig implements EngineConfig {
   public Duration provenanceRetryBackoff() {
     return provenanceRetryBackoff;
   }
+
+  @Override
+  public boolean securityEnabled() {
+    return true;
+  }
+
+  @Override
+  public String securityBootstrapKey() {
+    return "test-local-api-key";
+  }
+
+  @Override
+  public String securityBootstrapName() {
+    return "test-bootstrap-admin";
+  }
+
+  @Override
+  public String securityBootstrapPermissions() {
+    return "CHANGESET_WRITE,FACT_READ,CHECKPOINT_ADMIN,RULE_ADMIN,PROVENANCE_READ,OPS_STREAM_READ";
+  }
+
+  @Override
+  public Duration shutdownTimeout() {
+    return Duration.ofSeconds(15);
+  }
+
+  @Override
+  public Duration opsStreamPollInterval() {
+    return Duration.ofSeconds(1);
+  }
+
+  @Override
+  public int opsStreamMaxBatch() {
+    return 50;
+  }
 }

@@ -67,4 +67,33 @@ public interface EngineConfig {
   @WithName("provenance-retry-backoff")
   @WithDefault("200ms")
   Duration provenanceRetryBackoff();
+
+  @WithName("security-enabled")
+  @WithDefault("true")
+  boolean securityEnabled();
+
+  @WithName("security-bootstrap-key")
+  @WithDefault("")
+  String securityBootstrapKey();
+
+  @WithName("security-bootstrap-name")
+  @WithDefault("bootstrap-admin")
+  String securityBootstrapName();
+
+  @WithName("security-bootstrap-permissions")
+  @WithDefault(
+      "CHANGESET_WRITE,FACT_READ,CHECKPOINT_ADMIN,RULE_ADMIN,PROVENANCE_READ,OPS_STREAM_READ")
+  String securityBootstrapPermissions();
+
+  @WithName("shutdown-timeout")
+  @WithDefault("15s")
+  Duration shutdownTimeout();
+
+  @WithName("ops-stream-poll-interval")
+  @WithDefault("1s")
+  Duration opsStreamPollInterval();
+
+  @WithName("ops-stream-max-batch")
+  @WithDefault("50")
+  int opsStreamMaxBatch();
 }

@@ -94,6 +94,10 @@ public class ProvenancePersistenceService {
     }
   }
 
+  public void flushNow() {
+    flushSafely();
+  }
+
   private List<ProvenanceCapture> drainBatch(int limit) {
     List<ProvenanceCapture> batch = new ArrayList<>(limit);
     queue.drainTo(batch, limit);

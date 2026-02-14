@@ -10,6 +10,8 @@ import com.sky.synome.rules.RuleVersionService.ActivationResult;
 import com.sky.synome.rules.RuleVersionService.RuleSubmission;
 import com.sky.synome.rules.RuleVersionService.UploadResult;
 import com.sky.synome.rules.RuleVersionStore.RuleVersion;
+import com.sky.synome.security.ApiPermission;
+import com.sky.synome.security.RequiresPermission;
 import jakarta.inject.Inject;
 import jakarta.ws.rs.Consumes;
 import jakarta.ws.rs.DefaultValue;
@@ -26,6 +28,7 @@ import java.util.UUID;
 
 @Path("/api/v1/rules")
 @Produces(MediaType.APPLICATION_JSON)
+@RequiresPermission(ApiPermission.RULE_ADMIN)
 public class RuleVersionResource {
 
   @Inject RuleVersionService ruleVersionService;

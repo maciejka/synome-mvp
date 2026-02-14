@@ -1,6 +1,5 @@
 package com.sky.synome.api;
 
-import static io.restassured.RestAssured.given;
 import static org.hamcrest.Matchers.equalTo;
 import static org.hamcrest.Matchers.hasSize;
 
@@ -22,7 +21,7 @@ class EventApiContractTest {
     String firstTimestamp = "2026-02-13T11:00:00Z";
     String secondTimestamp = "2026-02-13T11:01:00Z";
 
-    given()
+    ApiTestAuth.givenAuthorized()
         .contentType(ContentType.JSON)
         .body(eventPayload(firstChangesetId, "TX-API-1", firstTimestamp))
         .when()
@@ -30,7 +29,7 @@ class EventApiContractTest {
         .then()
         .statusCode(201);
 
-    given()
+    ApiTestAuth.givenAuthorized()
         .contentType(ContentType.JSON)
         .body(eventPayload(secondChangesetId, "TX-API-2", secondTimestamp))
         .when()
@@ -38,7 +37,7 @@ class EventApiContractTest {
         .then()
         .statusCode(201);
 
-    given()
+    ApiTestAuth.givenAuthorized()
         .queryParam("entryPoint", "transactions")
         .queryParam("from", "2026-02-13T11:00:30Z")
         .queryParam("to", "2026-02-13T11:01:30Z")
@@ -61,7 +60,7 @@ class EventApiContractTest {
     UUID changesetId = UUID.randomUUID();
     String timestamp = "2026-02-13T12:00:00Z";
 
-    given()
+    ApiTestAuth.givenAuthorized()
         .contentType(ContentType.JSON)
         .body(eventPayload(changesetId, "TX-API-3", timestamp))
         .when()
@@ -69,7 +68,7 @@ class EventApiContractTest {
         .then()
         .statusCode(201);
 
-    given()
+    ApiTestAuth.givenAuthorized()
         .queryParam("entryPoint", "transactions")
         .queryParam("from", "2026-02-13T11:59:00Z")
         .queryParam("to", "2026-02-13T12:01:00Z")

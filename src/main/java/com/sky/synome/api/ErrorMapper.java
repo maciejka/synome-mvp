@@ -6,6 +6,7 @@ import com.sky.synome.changeset.ChangesetValidator;
 import com.sky.synome.changeset.DuplicatePayloadMismatchException;
 import com.sky.synome.checkpoint.CheckpointException;
 import com.sky.synome.checkpoint.CheckpointNotFoundException;
+import com.sky.synome.ops.EngineWriteUnavailableException;
 import com.sky.synome.rules.RuleVersionException;
 import jakarta.ws.rs.core.Response;
 import jakarta.ws.rs.ext.ExceptionMapper;
@@ -82,6 +83,18 @@ public class ErrorMapper implements ExceptionMapper<Exception> {
       return Response.status(re.status())
           .entity(
               new ErrorResponse(re.code(), re.getMessage(), re.details(), Instant.now(), requestId))
+          .build();
+    }
+
+    if (exception instanceof EngineWriteUnavailableException) {
+      return Response.status(Response.Status.SERVICE_UNAVAILABLE)
+          .entity(
+              new ErrorResponse(
+                  "ENGINE_NOT_READY",
+                  "Engine is not accepting writes",
+                  Map.of(),
+                  Instant.now(),
+                  requestId))
           .build();
     }
 

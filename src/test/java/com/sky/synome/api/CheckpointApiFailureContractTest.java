@@ -1,6 +1,5 @@
 package com.sky.synome.api;
 
-import static io.restassured.RestAssured.given;
 import static org.hamcrest.Matchers.equalTo;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
@@ -50,7 +49,7 @@ class CheckpointApiFailureContractTest {
 
     assertTrue(lockAcquired.await(2, TimeUnit.SECONDS));
     try {
-      given()
+      ApiTestAuth.givenAuthorized()
           .when()
           .post("/api/v1/checkpoints")
           .then()

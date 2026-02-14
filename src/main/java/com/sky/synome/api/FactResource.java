@@ -1,9 +1,14 @@
 package com.sky.synome.api;
 
+import com.sky.synome.api.dto.DerivedFactSummary;
 import com.sky.synome.api.dto.FactResponse;
 import com.sky.synome.core.EngineSession;
 import com.sky.synome.core.FactRegistry;
+import com.sky.synome.provenance.ExplanationService;
+import com.sky.synome.security.ApiPermission;
+import com.sky.synome.security.RequiresPermission;
 import jakarta.inject.Inject;
+import jakarta.ws.rs.DefaultValue;
 import jakarta.ws.rs.GET;
 import jakarta.ws.rs.Path;
 import jakarta.ws.rs.PathParam;
@@ -16,9 +21,12 @@ import java.util.Map;
 
 @Path("/api/v1/facts")
 @Produces(MediaType.APPLICATION_JSON)
+@RequiresPermission(ApiPermission.FACT_READ)
 public class FactResource {
 
   @Inject EngineSession engineSession;
+
+  @Inject ExplanationService explanationService;
 
   @GET
   public List<FactResponse> listFacts(@QueryParam("type") String typeFilter) {
@@ -53,5 +61,25 @@ public class FactResource {
     return Map.of(
         "totalFacts", engineSession.factRegistry().size(),
         "countByType", engineSession.factRegistry().countByType());
+  }
+
+  @GET
+  @Path("/derived")
+  public List<DerivedFactSummary> derived(
+      @QueryParam("type") String typeFilter,
+      @QueryParam("ruleName") String ruleName,
+      @QueryParam("limit") @DefaultValue("50") int limit,
+      @QueryParam("offset") @DefaultValue("0") int offset) {
+    int safeLimit = Math.max(1, Math.min(limit, 500));
+    int safeOffset = Math.max(0, offset);
+    return explanationService
+        .search(typeFilter, null, ruleName, safeLimit, safeOffset, true)
+        .stream()
+        .filter(fact -> fact.producedByRule() != null)
+        .map(
+            fact ->
+                new DerivedFactSummary(
+                    fact.factId(), fact.factType(), fact.producedByRule(), fact.factKey()))
+        .toList();
   }
 }

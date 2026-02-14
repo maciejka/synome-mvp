@@ -9,6 +9,8 @@ import com.sky.synome.provenance.ExplanationService;
 import com.sky.synome.provenance.ProvenanceExplainNode;
 import com.sky.synome.provenance.ProvenanceFactRecord;
 import com.sky.synome.provenance.ProvenanceModification;
+import com.sky.synome.security.ApiPermission;
+import com.sky.synome.security.RequiresPermission;
 import jakarta.inject.Inject;
 import jakarta.ws.rs.DefaultValue;
 import jakarta.ws.rs.GET;
@@ -22,6 +24,7 @@ import java.util.List;
 
 @Path("/api/v1/provenance")
 @Produces(MediaType.APPLICATION_JSON)
+@RequiresPermission(ApiPermission.PROVENANCE_READ)
 public class ProvenanceResource {
 
   @Inject ExplanationService explanationService;

@@ -22,5 +22,11 @@ class EngineConfigDefaultsTest {
     assertEquals(100, engineConfig.provenanceBatchSize());
     assertEquals(Duration.ofMillis(500), engineConfig.provenanceFlushInterval());
     assertEquals(Duration.ofMillis(200), engineConfig.provenanceRetryBackoff());
+    assertTrue(engineConfig.securityEnabled());
+    assertEquals("test-local-api-key", engineConfig.securityBootstrapKey());
+    assertEquals("bootstrap-admin", engineConfig.securityBootstrapName());
+    assertEquals(Duration.ofSeconds(15), engineConfig.shutdownTimeout());
+    assertEquals(Duration.ofSeconds(1), engineConfig.opsStreamPollInterval());
+    assertEquals(50, engineConfig.opsStreamMaxBatch());
   }
 }

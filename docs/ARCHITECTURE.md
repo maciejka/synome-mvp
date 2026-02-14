@@ -254,6 +254,7 @@ Rollback source of truth is pre-swap checkpoint.
 ### Auth
 
 All business endpoints require `X-Api-Key`.
+Permission mapping is defined in `docs/API_PERMISSIONS.md`.
 
 ## 12. Error Model (Target)
 

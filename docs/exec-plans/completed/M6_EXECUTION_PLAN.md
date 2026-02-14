@@ -222,9 +222,9 @@ Likely updated files:
 
 ## 10. Exit Checklist
 
-- [ ] API key authn/authz enforced across business endpoints.
-- [ ] Permission matrix documented and tested.
-- [ ] SSE resources merged with auth controls.
-- [ ] Graceful shutdown with final checkpoint merged.
-- [ ] Lifecycle/security integration tests and `./gradlew qa` green.
-- [ ] `docs/PLANS.md` M6 moved to `DONE`.
+- [x] API key authn/authz enforced across business endpoints.
+- [x] Permission matrix documented and tested.
+- [x] SSE resources merged with auth controls.
+- [x] Graceful shutdown with final checkpoint merged.
+- [x] Lifecycle/security integration tests and `./gradlew qa` green.
+- [x] `docs/PLANS.md` M6 moved to `DONE`.

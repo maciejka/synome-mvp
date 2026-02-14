@@ -1,6 +1,5 @@
 package com.sky.synome.api;
 
-import static io.restassured.RestAssured.given;
 import static org.hamcrest.Matchers.endsWith;
 import static org.hamcrest.Matchers.equalTo;
 import static org.hamcrest.Matchers.greaterThan;
@@ -50,7 +49,7 @@ class ChangesetApiContractTest {
             changesetId);
 
     Number firstSequence =
-        given()
+        ApiTestAuth.givenAuthorized()
             .contentType(ContentType.JSON)
             .body(payload)
             .when()
@@ -61,7 +60,7 @@ class ChangesetApiContractTest {
             .extract()
             .path("sequenceNum");
 
-    given()
+    ApiTestAuth.givenAuthorized()
         .contentType(ContentType.JSON)
         .body(payload)
         .when()
@@ -119,7 +118,7 @@ class ChangesetApiContractTest {
         """,
             changesetId);
 
-    given()
+    ApiTestAuth.givenAuthorized()
         .contentType(ContentType.JSON)
         .body(firstPayload)
         .when()
@@ -127,7 +126,7 @@ class ChangesetApiContractTest {
         .then()
         .statusCode(201);
 
-    given()
+    ApiTestAuth.givenAuthorized()
         .contentType(ContentType.JSON)
         .body(changedPayload)
         .when()
@@ -159,7 +158,7 @@ class ChangesetApiContractTest {
         """,
             UUID.randomUUID());
 
-    given()
+    ApiTestAuth.givenAuthorized()
         .contentType(ContentType.JSON)
         .body(invalidPayload)
         .when()
@@ -198,7 +197,7 @@ class ChangesetApiContractTest {
         """,
             changesetId);
 
-    given()
+    ApiTestAuth.givenAuthorized()
         .contentType(ContentType.JSON)
         .body(payload)
         .when()
@@ -206,7 +205,7 @@ class ChangesetApiContractTest {
         .then()
         .statusCode(201);
 
-    given()
+    ApiTestAuth.givenAuthorized()
         .queryParam("limit", 50)
         .queryParam("offset", 0)
         .when()
@@ -221,7 +220,7 @@ class ChangesetApiContractTest {
         .body("[0]", hasKey("durationMs"))
         .body("[0]", hasKey("checksum"));
 
-    given()
+    ApiTestAuth.givenAuthorized()
         .when()
         .get("/api/v1/changesets/{id}", changesetId)
         .then()
@@ -234,7 +233,11 @@ class ChangesetApiContractTest {
 
   @Test
   void changesetByIdReturns404WhenMissing() {
-    given().when().get("/api/v1/changesets/{id}", UUID.randomUUID()).then().statusCode(404);
+    ApiTestAuth.givenAuthorized()
+        .when()
+        .get("/api/v1/changesets/{id}", UUID.randomUUID())
+        .then()
+        .statusCode(404);
   }
 
   @Test
@@ -263,7 +266,7 @@ class ChangesetApiContractTest {
         """,
             changesetId);
 
-    given()
+    ApiTestAuth.givenAuthorized()
         .contentType(ContentType.JSON)
         .body(payload)
         .when()
@@ -271,14 +274,14 @@ class ChangesetApiContractTest {
         .then()
         .statusCode(201);
 
-    given()
+    ApiTestAuth.givenAuthorized()
         .when()
         .get("/api/v1/facts")
         .then()
         .statusCode(200)
         .body("factKey", hasItem("customer:C-API-FACT-1"));
 
-    given()
+    ApiTestAuth.givenAuthorized()
         .queryParam("type", "Customer")
         .when()
         .get("/api/v1/facts")
@@ -286,7 +289,7 @@ class ChangesetApiContractTest {
         .statusCode(200)
         .body("factType", hasItem("Customer"));
 
-    given()
+    ApiTestAuth.givenAuthorized()
         .when()
         .get("/api/v1/facts/{factKey}", "customer:C-API-FACT-1")
         .then()
@@ -295,14 +298,14 @@ class ChangesetApiContractTest {
         .body("factType", equalTo("Customer"))
         .body("data.customerId", equalTo("C-API-FACT-1"));
 
-    given()
+    ApiTestAuth.givenAuthorized()
         .when()
         .get("/api/v1/facts/types")
         .then()
         .statusCode(200)
         .body("$", hasItem(endsWith("Customer")));
 
-    given()
+    ApiTestAuth.givenAuthorized()
         .when()
         .get("/api/v1/facts/stats")
         .then()
@@ -313,7 +316,11 @@ class ChangesetApiContractTest {
 
   @Test
   void factByKeyReturns404WhenMissing() {
-    given().when().get("/api/v1/facts/{factKey}", "customer:DOES-NOT-EXIST").then().statusCode(404);
+    ApiTestAuth.givenAuthorized()
+        .when()
+        .get("/api/v1/facts/{factKey}", "customer:DOES-NOT-EXIST")
+        .then()
+        .statusCode(404);
   }
 
   private static String withChangesetId(String payload, UUID changesetId) {

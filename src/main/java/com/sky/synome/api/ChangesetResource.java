@@ -6,6 +6,8 @@ import static org.jooq.impl.DSL.table;
 import com.sky.synome.api.dto.ChangesetRequest;
 import com.sky.synome.api.dto.ChangesetResponse;
 import com.sky.synome.changeset.ChangesetProcessor;
+import com.sky.synome.security.ApiPermission;
+import com.sky.synome.security.RequiresPermission;
 import jakarta.inject.Inject;
 import jakarta.ws.rs.Consumes;
 import jakarta.ws.rs.DefaultValue;
@@ -26,6 +28,7 @@ import org.jooq.Record;
 @Path("/api/v1/changesets")
 @Produces(MediaType.APPLICATION_JSON)
 @Consumes(MediaType.APPLICATION_JSON)
+@RequiresPermission(ApiPermission.FACT_READ)
 public class ChangesetResource {
 
   @Inject ChangesetProcessor processor;
@@ -33,6 +36,7 @@ public class ChangesetResource {
   @Inject DSLContext dsl;
 
   @POST
+  @RequiresPermission(ApiPermission.CHANGESET_WRITE)
   public Response apply(ChangesetRequest request) {
     ChangesetResponse response = processor.process(request.toChangeset());
     return Response.status(Response.Status.CREATED).entity(response).build();

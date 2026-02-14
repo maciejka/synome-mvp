@@ -9,10 +9,11 @@ This directory tracks detailed execution plans for each milestone in `docs/PLANS
 - `docs/exec-plans/completed/M3_EXECUTION_PLAN.md` - delivered CEP replay-window determinism, event projection replay, and event diagnostics APIs.
 - `docs/exec-plans/completed/M4_EXECUTION_PLAN.md` - delivered full provenance graph, async persistence, explanation traversal, and provenance APIs.
 - `docs/exec-plans/completed/M5_EXECUTION_PLAN.md` - delivered rule version lifecycle APIs plus safe runtime hot swap with rollback.
+- `docs/exec-plans/completed/M6_EXECUTION_PLAN.md` - delivered API-key authz, ops streams, readiness/shutdown lifecycle controls, and security/lifecycle tests.
 
 ## Pending / Active
 
-- `docs/exec-plans/pending/M6_EXECUTION_PLAN.md` - deliver auth, operational APIs, and graceful lifecycle controls.
+- `none`
 
 ## Usage Guidance
 
