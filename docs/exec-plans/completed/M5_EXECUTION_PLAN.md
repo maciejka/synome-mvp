@@ -209,9 +209,9 @@ Likely updated files:
 
 ## 10. Exit Checklist
 
-- [ ] Rule version lifecycle service merged.
-- [ ] Candidate compile/compatibility checks merged.
-- [ ] Hot-swap coordinator with rollback merged.
-- [ ] Rule APIs and contract tests merged.
-- [ ] Full swap lifecycle tests and `./gradlew qa` green.
-- [ ] `docs/PLANS.md` M5 moved to `DONE`.
+- [x] Rule version lifecycle service merged.
+- [x] Candidate compile/compatibility checks merged.
+- [x] Hot-swap coordinator with rollback merged.
+- [x] Rule APIs and contract tests merged.
+- [x] Full swap lifecycle tests and `./gradlew qa` green.
+- [x] `docs/PLANS.md` M5 moved to `DONE`.

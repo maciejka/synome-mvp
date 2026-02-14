@@ -2,14 +2,18 @@ package com.sky.synome.core;
 
 import com.sky.synome.config.EngineConfig;
 import com.sky.synome.provenance.ProvenanceCollector;
+import com.sky.synome.rules.RuleVersionStore;
 import io.quarkus.runtime.Startup;
 import jakarta.annotation.PreDestroy;
 import jakarta.enterprise.context.ApplicationScoped;
+import jakarta.enterprise.inject.Instance;
 import jakarta.inject.Inject;
 import java.io.IOException;
 import java.io.InputStream;
 import java.nio.charset.StandardCharsets;
+import java.time.Instant;
 import java.util.ArrayList;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.TimeUnit;
@@ -17,6 +21,8 @@ import org.jboss.logging.Logger;
 import org.kie.api.KieBase;
 import org.kie.api.KieServices;
 import org.kie.api.definition.type.FactType;
+import org.kie.api.event.rule.AgendaEventListener;
+import org.kie.api.event.rule.RuleRuntimeEventListener;
 import org.kie.api.runtime.KieSession;
 import org.kie.api.runtime.KieSessionConfiguration;
 import org.kie.api.runtime.conf.ClockTypeOption;
@@ -28,10 +34,11 @@ import org.kie.api.time.SessionPseudoClock;
 public class EngineSession {
 
   private static final Logger LOG = Logger.getLogger(EngineSession.class);
-  private static final String DRL_PACKAGE = "com.sky.synome.rules";
+  public static final String DRL_PACKAGE = "com.sky.synome.rules";
 
   private final EngineConfig config;
   private final RuleCompiler compiler;
+  @Inject Instance<RuleVersionStore> ruleVersionStoreInstance;
 
   private KieBase kieBase;
   private KieSession kieSession;
@@ -51,10 +58,8 @@ public class EngineSession {
 
   private void initialize() {
     String drlPath = config.rulesPath() + "/" + config.defaultRulesFile();
-    LOG.infof("Loading DRL from classpath: %s", drlPath);
-
-    String drl = loadDrl(drlPath);
-    this.kieBase = compiler.compile(drl);
+    Map<String, String> sourceFiles = resolveStartupSources(drlPath);
+    this.kieBase = compiler.compile(sourceFiles);
     this.kieSession = createSession();
 
     LOG.infof(
@@ -74,12 +79,39 @@ public class EngineSession {
     }
   }
 
+  private Map<String, String> resolveStartupSources(String drlPath) {
+    Map<String, String> activeSources = tryLoadActiveRuleSources();
+    if (!activeSources.isEmpty()) {
+      LOG.infof("Loading active DRL sources from rule_versions (%d files)", activeSources.size());
+      return activeSources;
+    }
+
+    LOG.infof("Loading DRL from classpath: %s", drlPath);
+    return Map.of(drlPath, loadDrl(drlPath));
+  }
+
+  private Map<String, String> tryLoadActiveRuleSources() {
+    if (ruleVersionStoreInstance == null || !ruleVersionStoreInstance.isResolvable()) {
+      return Map.of();
+    }
+    try {
+      return ruleVersionStoreInstance
+          .get()
+          .findActive()
+          .map(RuleVersionStore.RuleVersion::drlFiles)
+          .orElse(Map.of());
+    } catch (RuntimeException e) {
+      LOG.warnf(
+          e,
+          "Failed to load active rule version from persistence at %s, falling back to classpath",
+          Instant.now());
+      return Map.of();
+    }
+  }
+
   @PreDestroy
   void destroy() {
-    if (kieSession != null) {
-      LOG.info("Disposing KieSession");
-      kieSession.dispose();
-    }
+    disposeSession(kieSession);
   }
 
   public KieBase kieBase() {
@@ -108,9 +140,7 @@ public class EngineSession {
 
   public void restoreFromSnapshot(
       List<RestorableFact> snapshot, long clockMillis, boolean fireRules) {
-    if (kieSession != null) {
-      kieSession.dispose();
-    }
+    disposeSession(kieSession);
     this.kieSession = createSession();
     this.factRegistry.clear();
 
@@ -155,7 +185,11 @@ public class EngineSession {
   }
 
   public Object createFact(String factTypeName, Map<String, Object> data) {
-    FactType factType = kieBase.getFactType(DRL_PACKAGE, factTypeName);
+    return createFact(kieBase, factTypeName, data);
+  }
+
+  public Object createFact(KieBase sourceBase, String factTypeName, Map<String, Object> data) {
+    FactType factType = sourceBase.getFactType(DRL_PACKAGE, factTypeName);
     if (factType == null) {
       throw new IllegalStateException("Unknown fact type: " + factTypeName);
     }
@@ -176,14 +210,68 @@ public class EngineSession {
     }
   }
 
+  public KieSession createDetachedSession(KieBase sourceBase) {
+    return createSession(sourceBase, false);
+  }
+
+  public void replaceRuntime(
+      KieBase newKieBase,
+      KieSession newSession,
+      Map<String, FactRegistry.FactEntry> registryEntries) {
+    this.kieBase = newKieBase;
+    this.kieSession = newSession;
+    this.factRegistry.clear();
+    for (Map.Entry<String, FactRegistry.FactEntry> entry : registryEntries.entrySet()) {
+      this.factRegistry.put(entry.getKey(), entry.getValue());
+    }
+    wireProvenanceListeners(this.kieSession);
+    for (Map.Entry<String, FactRegistry.FactEntry> entry : this.factRegistry.entries()) {
+      provenanceCollector.registerRestoredBaseFact(entry.getKey(), entry.getValue().handle());
+    }
+  }
+
+  public Map<String, FactRegistry.FactEntry> snapshotRegistryEntries() {
+    Map<String, FactRegistry.FactEntry> snapshot = new LinkedHashMap<>();
+    for (Map.Entry<String, FactRegistry.FactEntry> entry : factRegistry.entries()) {
+      snapshot.put(entry.getKey(), entry.getValue());
+    }
+    return snapshot;
+  }
+
+  public void disposeSession(KieSession session) {
+    if (session == null) {
+      return;
+    }
+    try {
+      session.removeEventListener((RuleRuntimeEventListener) provenanceCollector);
+      session.removeEventListener((AgendaEventListener) provenanceCollector);
+    } catch (RuntimeException ignored) {
+      // Best-effort cleanup; session may be partially initialized.
+    }
+    LOG.info("Disposing KieSession");
+    session.dispose();
+  }
+
   private KieSession createSession() {
+    return createSession(kieBase, true);
+  }
+
+  private KieSession createSession(KieBase sourceBase, boolean wireProvenance) {
     KieSessionConfiguration sessionConfig = KieServices.Factory.get().newKieSessionConfiguration();
     sessionConfig.setOption(ClockTypeOption.PSEUDO);
-    KieSession session = kieBase.newKieSession(sessionConfig, null);
-    provenanceCollector.onSessionReset();
-    session.addEventListener((org.kie.api.event.rule.RuleRuntimeEventListener) provenanceCollector);
-    session.addEventListener((org.kie.api.event.rule.AgendaEventListener) provenanceCollector);
+    KieSession session = sourceBase.newKieSession(sessionConfig, null);
+    if (wireProvenance) {
+      wireProvenanceListeners(session);
+    }
     return session;
+  }
+
+  private void wireProvenanceListeners(KieSession session) {
+    provenanceCollector.onSessionReset();
+    session.removeEventListener((RuleRuntimeEventListener) provenanceCollector);
+    session.removeEventListener((AgendaEventListener) provenanceCollector);
+    session.addEventListener((RuleRuntimeEventListener) provenanceCollector);
+    session.addEventListener((AgendaEventListener) provenanceCollector);
   }
 
   private void advanceClockTo(long clockMillis) {

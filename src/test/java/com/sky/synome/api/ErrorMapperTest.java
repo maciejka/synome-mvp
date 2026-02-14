@@ -8,6 +8,7 @@ import com.sky.synome.api.dto.ErrorResponse;
 import com.sky.synome.changeset.DuplicatePayloadMismatchException;
 import com.sky.synome.checkpoint.CheckpointException;
 import com.sky.synome.checkpoint.CheckpointNotFoundException;
+import com.sky.synome.rules.RuleVersionException;
 import jakarta.ws.rs.core.Response;
 import java.util.Map;
 import java.util.UUID;
@@ -70,5 +71,19 @@ class ErrorMapperTest {
     assertEquals(404, response.getStatus());
     assertNotNull(body);
     assertFalse(body.details().containsKey("checkpointId"));
+  }
+
+  @Test
+  void ruleVersionExceptionMapsToConfiguredStatusAndCode() {
+    Response response =
+        mapper.toResponse(
+            new RuleVersionException(
+                "RULE_VALIDATION_ERROR", 400, "Rule validation failed", Map.of("checksum", "abc")));
+    ErrorResponse body = (ErrorResponse) response.getEntity();
+
+    assertEquals(400, response.getStatus());
+    assertNotNull(body);
+    assertEquals("RULE_VALIDATION_ERROR", body.code());
+    assertEquals("abc", body.details().get("checksum"));
   }
 }

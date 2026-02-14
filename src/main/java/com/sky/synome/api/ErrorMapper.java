@@ -6,6 +6,7 @@ import com.sky.synome.changeset.ChangesetValidator;
 import com.sky.synome.changeset.DuplicatePayloadMismatchException;
 import com.sky.synome.checkpoint.CheckpointException;
 import com.sky.synome.checkpoint.CheckpointNotFoundException;
+import com.sky.synome.rules.RuleVersionException;
 import jakarta.ws.rs.core.Response;
 import jakarta.ws.rs.ext.ExceptionMapper;
 import jakarta.ws.rs.ext.Provider;
@@ -74,6 +75,13 @@ public class ErrorMapper implements ExceptionMapper<Exception> {
           .entity(
               new ErrorResponse(
                   "CHECKPOINT_ERROR", ce.getMessage(), ce.details(), Instant.now(), requestId))
+          .build();
+    }
+
+    if (exception instanceof RuleVersionException re) {
+      return Response.status(re.status())
+          .entity(
+              new ErrorResponse(re.code(), re.getMessage(), re.details(), Instant.now(), requestId))
           .build();
     }
 

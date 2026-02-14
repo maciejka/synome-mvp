@@ -8,10 +8,10 @@ This directory tracks detailed execution plans for each milestone in `docs/PLANS
 - `docs/exec-plans/completed/M2_CLOSEOUT_EXECUTION_PLAN.md` - hardening closeout plan that completed M2 diagnostics, failure-path tests, and runbook deliverables.
 - `docs/exec-plans/completed/M3_EXECUTION_PLAN.md` - delivered CEP replay-window determinism, event projection replay, and event diagnostics APIs.
 - `docs/exec-plans/completed/M4_EXECUTION_PLAN.md` - delivered full provenance graph, async persistence, explanation traversal, and provenance APIs.
+- `docs/exec-plans/completed/M5_EXECUTION_PLAN.md` - delivered rule version lifecycle APIs plus safe runtime hot swap with rollback.
 
 ## Pending / Active
 
-- `docs/exec-plans/pending/M5_EXECUTION_PLAN.md` - implement safe rule hot swap with rollback.
 - `docs/exec-plans/pending/M6_EXECUTION_PLAN.md` - deliver auth, operational APIs, and graceful lifecycle controls.
 
 ## Usage Guidance

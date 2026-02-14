@@ -36,14 +36,19 @@ This file is the source of truth for current implementation status and delivery 
   - Async persistence pipeline writes `fact_provenance` and `fact_modifications` without blocking apply.
   - Provenance REST APIs are implemented (`GET /api/v1/provenance/facts/{factId}`, `/explain`, `/impact`, `/search`).
   - Provenance API contracts and CEP-aware provenance integration tests are implemented.
+- M5 rule hot swap is complete:
+  - Rule version validate/upload/list/activate/rollback APIs are implemented.
+  - Candidate compile + compatibility checks run before activation and emit deterministic diagnostics.
+  - Safe swap protocol is implemented (pre-swap checkpoint, base fact transfer, event replay, convergence, atomic runtime replacement, activation persistence).
+  - Rollback restores prior runtime when activation persistence or swap stages fail.
+  - Rule hot swap API contract tests are implemented.
 - M6 foundations exist:
   - Read/query APIs for changesets and facts exist.
   - Base health endpoint support is wired via Quarkus SmallRye Health.
 
 ### Remaining gaps for next milestones
 
-1. Rule hot swap orchestration is not implemented.
-2. API authentication/authorization, SSE operations surface, and graceful shutdown lifecycle are not implemented.
+1. API authentication/authorization, SSE operations surface, and graceful shutdown lifecycle are not implemented.
 
 ### Execution Plan Files
 
@@ -52,9 +57,9 @@ This file is the source of truth for current implementation status and delivery 
   - `docs/exec-plans/completed/M2_CLOSEOUT_EXECUTION_PLAN.md`
   - `docs/exec-plans/completed/M3_EXECUTION_PLAN.md`
   - `docs/exec-plans/completed/M4_EXECUTION_PLAN.md`
+  - `docs/exec-plans/completed/M5_EXECUTION_PLAN.md`
 - Remaining milestones index: `docs/exec-plans/README.md`.
 - Active detailed plans:
-  - `docs/exec-plans/pending/M5_EXECUTION_PLAN.md`
   - `docs/exec-plans/pending/M6_EXECUTION_PLAN.md`
 - Runbook: `docs/RUNBOOK.md`
 
@@ -137,16 +142,16 @@ Exit criteria:
 - Explain endpoint returns accurate multi-step derivations and supports persisted history lookup.
 
 ### M5: Rule Hot Swap
-Status: PARTIAL
+Status: DONE
 
 Goal: upgrade active rules without downtime and with deterministic rollback.
 
 - [x] Rule version persistence schema exists (`rule_versions`).
-- [ ] Candidate compile + compatibility checks.
-- [ ] Pre-swap checkpoint and rollback path.
-- [ ] Base-fact transfer + in-window event replay into candidate session.
-- [ ] Atomic session swap + active version persistence.
-- [ ] Hot-swap integration tests.
+- [x] Candidate compile + compatibility checks.
+- [x] Pre-swap checkpoint and rollback path.
+- [x] Base-fact transfer + in-window event replay into candidate session.
+- [x] Atomic session swap + active version persistence.
+- [x] Hot-swap integration tests.
 
 Exit criteria:
 
