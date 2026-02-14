@@ -6,7 +6,7 @@ This file is the source of truth for current implementation status and delivery 
 
 - `docs/ARCHITECTURE.md` defines the target end-state.
 - This file tracks what is implemented now and what remains.
-- Snapshot date: 2026-02-13.
+- Snapshot date: 2026-02-14.
 
 ## Status Legend
 
@@ -30,17 +30,20 @@ This file is the source of truth for current implementation status and delivery 
   - Recovery now replays FACT tail and in-window EVENT history deterministically.
   - Event diagnostics APIs (`GET /api/v1/events`, `GET /api/v1/events/{changesetId}`) are implemented.
   - CEP replay-window determinism tests cover restart boundaries and event window filtering.
-- M4 foundations exist:
-  - Runtime derivation/retraction listener exists (`DerivationTracker`) and is wired into the session.
+- M4 provenance and explanation are complete:
+  - Agenda/runtime provenance capture with activation context is implemented (`ProvenanceCollector`).
+  - In-memory provenance graph, explanation traversal, and impact lookup are implemented.
+  - Async persistence pipeline writes `fact_provenance` and `fact_modifications` without blocking apply.
+  - Provenance REST APIs are implemented (`GET /api/v1/provenance/facts/{factId}`, `/explain`, `/impact`, `/search`).
+  - Provenance API contracts and CEP-aware provenance integration tests are implemented.
 - M6 foundations exist:
   - Read/query APIs for changesets and facts exist.
   - Base health endpoint support is wired via Quarkus SmallRye Health.
 
 ### Remaining gaps for next milestones
 
-1. Provenance is currently transient/in-memory only; no persisted DAG or explanation API.
-2. Rule hot swap orchestration is not implemented.
-3. API authentication/authorization, SSE operations surface, and graceful shutdown lifecycle are not implemented.
+1. Rule hot swap orchestration is not implemented.
+2. API authentication/authorization, SSE operations surface, and graceful shutdown lifecycle are not implemented.
 
 ### Execution Plan Files
 
@@ -48,9 +51,9 @@ This file is the source of truth for current implementation status and delivery 
   - `docs/exec-plans/completed/M2_EXECUTION_PLAN.md`
   - `docs/exec-plans/completed/M2_CLOSEOUT_EXECUTION_PLAN.md`
   - `docs/exec-plans/completed/M3_EXECUTION_PLAN.md`
+  - `docs/exec-plans/completed/M4_EXECUTION_PLAN.md`
 - Remaining milestones index: `docs/exec-plans/README.md`.
 - Active detailed plans:
-  - `docs/exec-plans/pending/M4_EXECUTION_PLAN.md`
   - `docs/exec-plans/pending/M5_EXECUTION_PLAN.md`
   - `docs/exec-plans/pending/M6_EXECUTION_PLAN.md`
 - Runbook: `docs/RUNBOOK.md`
@@ -117,17 +120,17 @@ Exit criteria:
 - Recovery replays all required in-window events and only required in-window events.
 
 ### M4: Provenance and Explanation
-Status: PARTIAL
+Status: DONE
 
 Goal: produce explainable, queryable derivation chains for derived facts.
 
-- [x] Runtime derivation/retraction listener baseline (`DerivationTracker`).
-- [ ] Agenda listener + activation context capture.
-- [ ] In-memory provenance DAG with stable identifiers and relationship model.
-- [ ] Explanation rendering service.
-- [ ] Async persistence/export to provenance tables.
-- [ ] Provenance REST API.
-- [ ] Provenance tests (including CEP-driven derivations).
+- [x] Runtime derivation/retraction listener baseline (`ProvenanceCollector`).
+- [x] Agenda listener + activation context capture.
+- [x] In-memory provenance DAG with stable identifiers and relationship model.
+- [x] Explanation rendering service.
+- [x] Async persistence/export to provenance tables.
+- [x] Provenance REST API.
+- [x] Provenance tests (including CEP-driven derivations).
 
 Exit criteria:
 

@@ -214,10 +214,10 @@ Likely updated files:
 
 ## 10. Exit Checklist
 
-- [ ] Provenance node/edge identity contract implemented.
-- [ ] Listener capture includes activation context.
-- [ ] In-memory graph + explanation service merged.
-- [ ] Async persistence and retry behavior verified.
-- [ ] Provenance API contract tests green.
-- [ ] CEP-aware provenance tests green.
-- [ ] `docs/PLANS.md` M4 moved to `DONE`.
+- [x] Provenance node/edge identity contract implemented.
+- [x] Listener capture includes activation context.
+- [x] In-memory graph + explanation service merged.
+- [x] Async persistence and retry behavior verified.
+- [x] Provenance API contract tests green.
+- [x] CEP-aware provenance tests green.
+- [x] `docs/PLANS.md` M4 moved to `DONE`.

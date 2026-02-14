@@ -9,6 +9,7 @@ import com.sky.synome.test.PostgresTestResource;
 import io.quarkus.test.common.QuarkusTestResource;
 import io.quarkus.test.junit.QuarkusTest;
 import jakarta.inject.Inject;
+import java.util.UUID;
 import org.junit.jupiter.api.Test;
 import org.kie.api.definition.type.FactType;
 import org.kie.api.runtime.rule.FactHandle;
@@ -27,7 +28,7 @@ class EngineSessionTest {
     assertNotNull(engineSession.kieSession());
     assertNotNull(engineSession.factRegistry());
     assertNotNull(engineSession.sessionLock());
-    assertNotNull(engineSession.derivationTracker());
+    assertNotNull(engineSession.provenanceCollector());
   }
 
   @Test
@@ -40,7 +41,7 @@ class EngineSessionTest {
   @Test
   void insertFactAndFireRule() throws Exception {
     var session = engineSession.kieSession();
-    var tracker = engineSession.derivationTracker();
+    var collector = engineSession.provenanceCollector();
 
     FactType customerType = engineSession.kieBase().getFactType(DRL_PACKAGE, "Customer");
     Object customer = customerType.newInstance();
@@ -59,13 +60,13 @@ class EngineSessionTest {
     FactHandle ch = session.insert(customer);
     FactHandle ah = session.insert(account);
 
-    tracker.startTracking();
+    collector.startChangeset(UUID.randomUUID());
     int fired = session.fireAllRules();
-    tracker.stopTracking();
+    var capture = collector.stopAndSnapshot();
 
     assertTrue(fired > 0, "At least one rule should fire");
-    assertFalse(tracker.getDerivations().isEmpty(), "Should have derived facts");
-    assertEquals("HighValueCustomer", tracker.getDerivations().get(0).factType());
+    assertFalse(capture.derivedFacts().isEmpty(), "Should have derived facts");
+    assertEquals("HighValueCustomer", capture.derivedFacts().get(0).factType());
 
     // Cleanup to not affect other tests
     session.delete(ch);

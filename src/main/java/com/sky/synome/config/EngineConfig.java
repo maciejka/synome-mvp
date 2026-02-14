@@ -51,4 +51,20 @@ public interface EngineConfig {
   @WithName("event-entrypoints")
   @WithDefault("transactions")
   String eventEntrypoints();
+
+  @WithName("provenance-queue-capacity")
+  @WithDefault("2000")
+  int provenanceQueueCapacity();
+
+  @WithName("provenance-batch-size")
+  @WithDefault("100")
+  int provenanceBatchSize();
+
+  @WithName("provenance-flush-interval")
+  @WithDefault("500ms")
+  Duration provenanceFlushInterval();
+
+  @WithName("provenance-retry-backoff")
+  @WithDefault("200ms")
+  Duration provenanceRetryBackoff();
 }

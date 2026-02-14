@@ -4,11 +4,14 @@ import com.sky.synome.api.dto.ChangesetResponse;
 import com.sky.synome.api.dto.DerivedFactSummary;
 import com.sky.synome.api.dto.EffectsSummary;
 import com.sky.synome.config.EngineConfig;
-import com.sky.synome.core.DerivationTracker;
 import com.sky.synome.core.EngineClockManager;
 import com.sky.synome.core.EngineClockManager.ClockMode;
 import com.sky.synome.core.EngineSession;
 import com.sky.synome.core.FactRegistry;
+import com.sky.synome.provenance.ProvenanceCapture;
+import com.sky.synome.provenance.ProvenanceCollector;
+import com.sky.synome.provenance.ProvenanceGraph;
+import com.sky.synome.provenance.ProvenancePersistenceService;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
 import java.util.ArrayList;
@@ -38,6 +41,10 @@ public class ChangesetProcessor {
   @Inject ChangesetEventStore changesetEventStore;
 
   @Inject EngineClockManager engineClockManager;
+
+  @Inject ProvenanceGraph provenanceGraph;
+
+  @Inject ProvenancePersistenceService provenancePersistenceService;
 
   public ChangesetResponse process(Changeset changeset) {
     long start = System.currentTimeMillis();
@@ -77,6 +84,10 @@ public class ChangesetProcessor {
             reservationSeq, applyResult.rulesFired(), durationMs, response);
         changesetEventStore.persistProjectedEvents(
             changeset.id(), reservationSeq, changeset.entries());
+        if (!applyResult.provenanceCapture().isEmpty()) {
+          provenanceGraph.applyCapture(applyResult.provenanceCapture());
+          provenancePersistenceService.enqueue(applyResult.provenanceCapture());
+        }
         response.sequenceNum = reservationSeq;
 
         LOG.infof(
@@ -157,34 +168,33 @@ public class ChangesetProcessor {
   private ApplyResult applyEntriesAndFire(
       Changeset changeset, KieSession session, FactRegistry registry, ClockMode clockMode) {
     EffectsSummary effects = new EffectsSummary();
-    DerivationTracker tracker = engineSession.derivationTracker();
+    ProvenanceCollector collector = engineSession.provenanceCollector();
     Set<String> allowedEntrypoints = configuredEventEntrypoints();
+    boolean captureProvenance = clockMode == ClockMode.LIVE;
+    ProvenanceCapture provenanceCapture =
+        new ProvenanceCapture(changeset.id(), List.of(), List.of(), List.of(), List.of(), 0);
     int rulesFired;
 
     // Start tracking before applying entries to catch TMS retractions
     // triggered by base fact deletions.
-    tracker.startTracking();
+    if (captureProvenance) {
+      collector.startChangeset(changeset.id());
+    }
     try {
       for (ChangesetEntry entry : changeset.entries()) {
         applyEntry(entry, session, registry, effects, clockMode, allowedEntrypoints);
       }
       rulesFired = session.fireAllRules();
     } finally {
-      tracker.stopTracking();
+      if (captureProvenance) {
+        provenanceCapture = collector.stopAndSnapshot();
+      }
     }
 
-    List<DerivedFactSummary> derivedFacts = new ArrayList<>();
-    for (DerivationTracker.Derivation derivation : tracker.getDerivations()) {
-      effects.derivedFactsCreated++;
-      derivedFacts.add(
-          new DerivedFactSummary(
-              UUID.randomUUID().toString(),
-              derivation.factType(),
-              derivation.ruleName(),
-              derivation.factType() + " derived by " + derivation.ruleName()));
-    }
-    effects.derivedFactsRetracted = tracker.getRetractions().size();
-    return new ApplyResult(rulesFired, effects, derivedFacts);
+    List<DerivedFactSummary> derivedFacts = new ArrayList<>(provenanceCapture.derivedFacts());
+    effects.derivedFactsCreated = derivedFacts.size();
+    effects.derivedFactsRetracted = provenanceCapture.derivedRetractions();
+    return new ApplyResult(rulesFired, effects, derivedFacts, provenanceCapture);
   }
 
   private void applyEntry(
@@ -214,19 +224,22 @@ public class ChangesetProcessor {
   private void applyUpsert(
       ChangesetEntry entry, KieSession session, FactRegistry registry, EffectsSummary effects) {
     Object fact = engineSession.createFact(entry.factType(), entry.data());
+    ProvenanceCollector collector = engineSession.provenanceCollector();
 
     FactRegistry.FactEntry existing = registry.get(entry.factKey());
     if (existing != null) {
       // Update existing fact — mark as explicit delete so tracker ignores it
-      engineSession.derivationTracker().markExplicitDelete(existing.handle());
+      collector.markExplicitDelete(existing.handle(), false);
       session.delete(existing.handle());
       FactHandle newHandle = session.insert(fact);
+      collector.registerBaseFactUpsert(entry.factKey(), entry.factType(), newHandle);
       registry.put(
           entry.factKey(), new FactRegistry.FactEntry(newHandle, entry.factType(), entry.data()));
       effects.factsUpdated++;
     } else {
       // Insert new fact
       FactHandle handle = session.insert(fact);
+      collector.registerBaseFactUpsert(entry.factKey(), entry.factType(), handle);
       registry.put(
           entry.factKey(), new FactRegistry.FactEntry(handle, entry.factType(), entry.data()));
       effects.factsInserted++;
@@ -237,7 +250,7 @@ public class ChangesetProcessor {
       ChangesetEntry entry, KieSession session, FactRegistry registry, EffectsSummary effects) {
     FactRegistry.FactEntry existing = registry.remove(entry.factKey());
     if (existing != null) {
-      engineSession.derivationTracker().markExplicitDelete(existing.handle());
+      engineSession.provenanceCollector().markExplicitDelete(existing.handle(), true);
       session.delete(existing.handle());
       effects.factsDeleted++;
     }
@@ -260,7 +273,8 @@ public class ChangesetProcessor {
     if (entryPoint == null) {
       throw new IllegalStateException("Unknown entryPoint: " + entry.entryPoint());
     }
-    entryPoint.insert(event);
+    FactHandle handle = entryPoint.insert(event);
+    engineSession.provenanceCollector().registerEventEmission(entry.factType(), handle);
     effects.eventsEmitted++;
   }
 
@@ -285,7 +299,10 @@ public class ChangesetProcessor {
   }
 
   private record ApplyResult(
-      int rulesFired, EffectsSummary effects, List<DerivedFactSummary> derivedFacts) {}
+      int rulesFired,
+      EffectsSummary effects,
+      List<DerivedFactSummary> derivedFacts,
+      ProvenanceCapture provenanceCapture) {}
 
   public static class LockTimeoutException extends RuntimeException {
     public LockTimeoutException(String message) {

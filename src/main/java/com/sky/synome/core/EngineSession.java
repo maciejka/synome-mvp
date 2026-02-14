@@ -1,6 +1,7 @@
 package com.sky.synome.core;
 
 import com.sky.synome.config.EngineConfig;
+import com.sky.synome.provenance.ProvenanceCollector;
 import io.quarkus.runtime.Startup;
 import jakarta.annotation.PreDestroy;
 import jakarta.enterprise.context.ApplicationScoped;
@@ -36,7 +37,7 @@ public class EngineSession {
   private KieSession kieSession;
   private final FactRegistry factRegistry = new FactRegistry();
   private final SessionLock sessionLock = new SessionLock();
-  private final DerivationTracker derivationTracker = new DerivationTracker();
+  private final ProvenanceCollector provenanceCollector = new ProvenanceCollector();
 
   public record RestorableFact(
       String factKey, String factType, Map<String, Object> data, Object factObject) {}
@@ -97,8 +98,8 @@ public class EngineSession {
     return sessionLock;
   }
 
-  public DerivationTracker derivationTracker() {
-    return derivationTracker;
+  public ProvenanceCollector provenanceCollector() {
+    return provenanceCollector;
   }
 
   public void rebuildFromSnapshot(List<RestorableFact> snapshot) {
@@ -119,6 +120,7 @@ public class EngineSession {
       Object factObject =
           fact.factObject() != null ? fact.factObject() : createFact(fact.factType(), fact.data());
       FactHandle handle = this.kieSession.insert(factObject);
+      this.provenanceCollector.registerRestoredBaseFact(fact.factKey(), handle);
       Map<String, Object> dataSnapshot = fact.data() == null ? Map.of() : Map.copyOf(fact.data());
       this.factRegistry.put(
           fact.factKey(), new FactRegistry.FactEntry(handle, fact.factType(), dataSnapshot));
@@ -178,7 +180,9 @@ public class EngineSession {
     KieSessionConfiguration sessionConfig = KieServices.Factory.get().newKieSessionConfiguration();
     sessionConfig.setOption(ClockTypeOption.PSEUDO);
     KieSession session = kieBase.newKieSession(sessionConfig, null);
-    session.addEventListener(derivationTracker);
+    provenanceCollector.onSessionReset();
+    session.addEventListener((org.kie.api.event.rule.RuleRuntimeEventListener) provenanceCollector);
+    session.addEventListener((org.kie.api.event.rule.AgendaEventListener) provenanceCollector);
     return session;
   }
 

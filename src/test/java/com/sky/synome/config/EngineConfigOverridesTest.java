@@ -20,5 +20,9 @@ class EngineConfigOverridesTest {
     assertFalse(engineConfig.eventReplayEnabled());
     assertEquals(Duration.ofMinutes(45), engineConfig.eventReplayWindow());
     assertEquals("transactions,audit", engineConfig.eventEntrypoints());
+    assertEquals(321, engineConfig.provenanceQueueCapacity());
+    assertEquals(22, engineConfig.provenanceBatchSize());
+    assertEquals(Duration.ofMillis(900), engineConfig.provenanceFlushInterval());
+    assertEquals(Duration.ofMillis(120), engineConfig.provenanceRetryBackoff());
   }
 }

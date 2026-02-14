@@ -6,9 +6,9 @@ import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import com.sky.synome.config.EngineConfig;
+import com.sky.synome.test.TestEngineConfig;
 import java.security.AccessController;
 import java.security.PrivilegedAction;
-import java.time.Duration;
 import java.util.List;
 import java.util.Map;
 import org.junit.jupiter.api.Test;
@@ -24,7 +24,7 @@ class EngineSessionUnitTest {
       assertNotNull(session.kieSession());
       assertNotNull(session.factRegistry());
       assertNotNull(session.sessionLock());
-      assertNotNull(session.derivationTracker());
+      assertNotNull(session.provenanceCollector());
     } finally {
       session.destroy();
     }
@@ -109,61 +109,6 @@ class EngineSessionUnitTest {
   }
 
   private static EngineConfig config(String rulesPath, String rulesFile) {
-    return new EngineConfig() {
-      @Override
-      public String rulesPath() {
-        return rulesPath;
-      }
-
-      @Override
-      public String defaultRulesFile() {
-        return rulesFile;
-      }
-
-      @Override
-      public long lockTimeoutMs() {
-        return 5000;
-      }
-
-      @Override
-      public boolean checkpointEnabled() {
-        return true;
-      }
-
-      @Override
-      public boolean checkpointSchedulerEnabled() {
-        return true;
-      }
-
-      @Override
-      public String checkpointInterval() {
-        return "10m";
-      }
-
-      @Override
-      public int checkpointRetainCount() {
-        return 20;
-      }
-
-      @Override
-      public boolean recoveryEnabled() {
-        return true;
-      }
-
-      @Override
-      public boolean eventReplayEnabled() {
-        return true;
-      }
-
-      @Override
-      public Duration eventReplayWindow() {
-        return Duration.ofMinutes(30);
-      }
-
-      @Override
-      public String eventEntrypoints() {
-        return "transactions";
-      }
-    };
+    return new TestEngineConfig(rulesPath, rulesFile);
   }
 }

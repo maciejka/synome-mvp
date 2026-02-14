@@ -18,5 +18,9 @@ class EngineConfigDefaultsTest {
     assertTrue(engineConfig.eventReplayEnabled());
     assertEquals(Duration.ofMinutes(30), engineConfig.eventReplayWindow());
     assertEquals("transactions", engineConfig.eventEntrypoints());
+    assertEquals(2000, engineConfig.provenanceQueueCapacity());
+    assertEquals(100, engineConfig.provenanceBatchSize());
+    assertEquals(Duration.ofMillis(500), engineConfig.provenanceFlushInterval());
+    assertEquals(Duration.ofMillis(200), engineConfig.provenanceRetryBackoff());
   }
 }
