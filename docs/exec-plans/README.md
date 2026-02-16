@@ -1,22 +1,24 @@
-# Execution Plans Index
+# Execution Plans Archive
 
-This directory tracks detailed execution plans for each milestone in `docs/PLANS.md`.
+This directory is a historical archive of milestone execution plans used during earlier delivery phases.
 
-## Completed
+## Current usage
 
-- `docs/exec-plans/completed/M2_EXECUTION_PLAN.md` - historical implementation plan used to deliver the M2 runtime baseline.
-- `docs/exec-plans/completed/M2_CLOSEOUT_EXECUTION_PLAN.md` - hardening closeout plan that completed M2 diagnostics, failure-path tests, and runbook deliverables.
-- `docs/exec-plans/completed/M3_EXECUTION_PLAN.md` - delivered CEP replay-window determinism, event projection replay, and event diagnostics APIs.
-- `docs/exec-plans/completed/M4_EXECUTION_PLAN.md` - delivered full provenance graph, async persistence, explanation traversal, and provenance APIs.
-- `docs/exec-plans/completed/M5_EXECUTION_PLAN.md` - delivered rule version lifecycle APIs plus safe runtime hot swap with rollback.
-- `docs/exec-plans/completed/M6_EXECUTION_PLAN.md` - delivered API-key authz, ops streams, readiness/shutdown lifecycle controls, and security/lifecycle tests.
+- Files in `docs/exec-plans/completed/` are retained for implementation history only.
+- They are not the source of truth for current runtime behavior.
+- Current behavior and operational guidance live in:
+  - `README.md`
+  - `docs/ARCHITECTURE.md`
+  - `docs/API.md`
+  - `docs/CONFIGURATION.md`
+  - `docs/RUNBOOK.md`
+  - `docs/PLANS.md`
 
-## Pending / Active
+## Archive index
 
-- `none`
-
-## Usage Guidance
-
-- Keep status authority in `docs/PLANS.md`; keep implementation detail in these plan files.
-- Update plan checklists when scope shifts; never silently drop scope.
-- Do not move a milestone to `DONE` without matching automated coverage and passing `./gradlew qa`.
+- `M2_EXECUTION_PLAN.md`
+- `M2_CLOSEOUT_EXECUTION_PLAN.md`
+- `M3_EXECUTION_PLAN.md`
+- `M4_EXECUTION_PLAN.md`
+- `M5_EXECUTION_PLAN.md`
+- `M6_EXECUTION_PLAN.md`
