@@ -131,8 +131,6 @@ Recommended local QA pass:
 - Keep commit subjects aligned with existing repository history:
   - Use a capitalized imperative summary without a `type:` prefix (for example: `Document commit message style policy`)
   - Keep subject short, descriptive, and without trailing punctuation.
-- For every commit created by Codex, add this trailer to the commit message:
-  - `Co-Authored-By: Codex <noreply@openai.com>`
 
 ## Architecture
 

@@ -1,6 +1,6 @@
-# Synome MVP (Decision Engine Prototype)
+# Decision Engine Prototype
 
-Synome MVP is a stateful rule engine prototype built on Drools 8.x + Quarkus 3.x.
+Stateful rule engine prototype built on Drools 8.x + Quarkus 3.x.
 
 ## What
 
@@ -49,14 +49,15 @@ All business endpoints require `X-Api-Key`.
 
 ## Documentation Map
 
-- `docs/ARCHITECTURE.md`: current prototype architecture and invariants.
-- `docs/API.md`: API surface, request/response contracts, and common flows.
-- `docs/API_PERMISSIONS.md`: permission matrix for each endpoint.
-- `docs/CONFIGURATION.md`: `engine.*` runtime settings and operational impact.
-- `docs/RUNBOOK.md`: startup/recovery/security/stream/shutdown operations guide.
-- `docs/walkthrough/USER_WALKTHROUGH.md`: copy-paste manual test scenario with explicit action logic and `lib.sh` introspection helpers.
-- `docs/PLANS.md`: current status and near-term documentation backlog.
+- [Architecture](docs/ARCHITECTURE.md): current prototype architecture and invariants.
+- [API](docs/API.md): API surface, request/response contracts, and common flows.
+- [API Permissions](docs/API_PERMISSIONS.md): permission matrix for each endpoint.
+- [Configuration](docs/CONFIGURATION.md): `engine.*` runtime settings and operational impact.
+- [Runbook](docs/RUNBOOK.md): startup/recovery/security/stream/shutdown operations guide.
+- [User Walkthrough](docs/walkthrough/USER_WALKTHROUGH.md): copy-paste manual test scenario with explicit action logic and `lib.sh` introspection helpers.
+- [Plans](docs/PLANS.md): current status and near-term documentation backlog.
+- [Execution Plans Index](docs/exec-plans/README.md): archive index for completed milestone execution plans.
 
 ## Historical Plans
 
-Detailed milestone execution plans are archived in `docs/exec-plans/completed/` and are not the source of truth for current runtime behavior.
+Detailed milestone execution plans are archived in [`docs/exec-plans/completed/`](docs/exec-plans/completed/) and are not the source of truth for current runtime behavior.
