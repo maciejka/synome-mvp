@@ -54,6 +54,7 @@ All business endpoints require `X-Api-Key`.
 - `docs/API_PERMISSIONS.md`: permission matrix for each endpoint.
 - `docs/CONFIGURATION.md`: `engine.*` runtime settings and operational impact.
 - `docs/RUNBOOK.md`: startup/recovery/security/stream/shutdown operations guide.
+- `docs/walkthrough/USER_WALKTHROUGH.md`: copy-paste manual test scenario with explicit action logic and `lib.sh` introspection helpers.
 - `docs/PLANS.md`: current status and near-term documentation backlog.
 
 ## Historical Plans

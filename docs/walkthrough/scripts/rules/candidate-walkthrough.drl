@@ -1,0 +1,66 @@
+package com.sky.synome.rules;
+
+declare Customer
+    customerId : String
+    name       : String
+    tier       : String
+    balance    : double
+end
+
+declare Account
+    accountId  : String
+    customerId : String
+    type       : String
+    balance    : double
+end
+
+declare HighValueCustomer
+    customerId : String
+    customerName : String
+    totalBalance : double
+    reason     : String
+end
+
+declare Transaction
+    @role( event )
+    @timestamp( eventTimestamp )
+    txId       : String
+    customerId : String
+    amount     : double
+    eventTimestamp : long
+end
+
+declare RecentLargeTransaction
+    txId       : String
+    customerId : String
+end
+
+rule "Premium customer with mid/high-value account (walkthrough)"
+    when
+        $c : Customer( tier == "PREMIUM" )
+        $a : Account( customerId == $c.customerId, balance > 50000 )
+    then
+        HighValueCustomer hvn = new HighValueCustomer();
+        hvn.setCustomerId($c.getCustomerId());
+        hvn.setCustomerName($c.getName());
+        hvn.setTotalBalance($a.getBalance());
+        hvn.setReason("Walkthrough rule: premium customer with account balance > 50K");
+        insertLogical(hvn);
+end
+
+rule "Observe transaction events"
+    when
+        $tx : Transaction() from entry-point "transactions"
+    then
+        // Keep transaction entry point active for EVENT/EMIT contract.
+end
+
+rule "Track recent large transaction"
+    when
+        $tx : Transaction( amount > 1000 ) over window:time( 30m ) from entry-point "transactions"
+    then
+        RecentLargeTransaction alert = new RecentLargeTransaction();
+        alert.setTxId($tx.getTxId());
+        alert.setCustomerId($tx.getCustomerId());
+        insertLogical(alert);
+end
